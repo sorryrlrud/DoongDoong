@@ -21,6 +21,115 @@
   --shadow-large: 7px 7px 0 rgba(23, 63, 84, 0.18);
 }
 
+@keyframes bottle-drift {
+  0%,
+  100% {
+    transform: scale(1.02) translate3d(-1px, 1px, 0) rotate(-0.15deg);
+  }
+
+  50% {
+    transform: scale(1.03) translate3d(3px, -4px, 0) rotate(0.15deg);
+  }
+}
+
+@keyframes paper-arrive {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0) rotate(-0.25deg);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotate(0);
+  }
+}
+
+@keyframes card-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 9px, 0) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes confirm-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes backdrop-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes tiny-pop {
+  from {
+    opacity: 0;
+    scale: 0.9;
+  }
+
+  70% {
+    opacity: 1;
+    scale: 1.05;
+  }
+
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+@keyframes loading-bob {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  50% {
+    transform: translate3d(0, -4px, 0);
+  }
+}
+
 * {
   box-sizing: border-box;
 }
@@ -189,6 +298,7 @@ strong {
   color: white;
   font-size: 11px;
   line-height: 1;
+  animation: tiny-pop 180ms ease-out both;
 }
 
 .header-actions {
@@ -210,6 +320,7 @@ strong {
   font-weight: 900;
   letter-spacing: 0.12em;
   line-height: 1.2;
+  animation: tiny-pop 220ms ease-out both;
 }
 
 .main-content {
@@ -730,6 +841,7 @@ strong {
 .sea-chip--selected {
   background: var(--ocean-deep);
   color: white;
+  animation: tiny-pop 180ms ease-out both;
 }
 
 .sea-chip--disabled {
@@ -809,6 +921,7 @@ strong {
 
 .letter-paper--received {
   min-height: 390px;
+  animation: paper-arrive 300ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
 .send-dialog {
@@ -827,10 +940,15 @@ strong {
 .send-dialog::backdrop {
   background: rgba(23, 63, 84, 0.62);
   backdrop-filter: blur(3px);
+  animation: backdrop-in 180ms ease-out both;
 }
 
 .send-dialog__body {
   padding: clamp(24px, 6vw, 38px);
+}
+
+.send-dialog[open] .send-dialog__body {
+  animation: dialog-in 200ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
 .send-dialog__body h2 {
@@ -886,6 +1004,7 @@ strong {
   min-height: 490px;
   object-fit: cover;
   object-position: 58% center;
+  animation: bottle-drift 7s ease-in-out infinite;
 }
 
 .catch-visual__label {
@@ -900,6 +1019,7 @@ strong {
   box-shadow: 3px 3px 0 var(--ocean-ink);
   font-size: 12px;
   font-weight: 900;
+  animation: tiny-pop 220ms ease-out both;
 }
 
 .catch-copy .button,
@@ -913,6 +1033,7 @@ strong {
   border: 2px dashed var(--coral-dark);
   border-radius: 12px;
   background: #ffe8dc;
+  animation: confirm-in 200ms ease-out both;
 }
 
 .inline-confirm p {
@@ -957,6 +1078,15 @@ strong {
   cursor: pointer;
   text-align: left;
   transition: transform 150ms ease, box-shadow 150ms ease;
+  animation: card-rise 220ms ease-out both;
+}
+
+.decision-card:nth-child(2) {
+  animation-delay: 45ms;
+}
+
+.decision-card:nth-child(3) {
+  animation-delay: 90ms;
 }
 
 .decision-card:hover:not(:disabled) {
@@ -1013,6 +1143,7 @@ strong {
   font-family: ui-monospace, Menlo, monospace;
   font-size: 12px;
   font-weight: 900;
+  animation: tiny-pop 220ms ease-out both;
 }
 
 .empty-state h2 {
@@ -1276,6 +1407,7 @@ strong {
   border-radius: 50%;
   object-fit: cover;
   object-position: 58% center;
+  animation: loading-bob 3.4s ease-in-out infinite;
 }
 
 .loading-screen strong,
@@ -1323,6 +1455,7 @@ strong {
   padding: clamp(34px, 6vw, 76px);
   flex-direction: column;
   justify-content: center;
+  animation: confirm-in 260ms ease-out both;
 }
 
 .onboarding__brand {
@@ -1432,6 +1565,7 @@ strong {
   box-shadow: var(--shadow-small);
   font-size: 13px;
   font-weight: 800;
+  animation: toast-in 220ms ease-out both;
 }
 
 @media (max-width: 1023px) {
