@@ -45,8 +45,8 @@ export function KeptScreen({ snapshot, now, onNavigate, onSnapshot, onNotice }: 
         <div className="empty-state">
           <span className="empty-state__stamp" aria-hidden="true">비었어요</span>
           <h2>잠시 곁에 둔 병이 없어요.</h2>
-          <button className="button button--primary" type="button" onClick={() => onNavigate("catch")}>
-            병 건져보기
+          <button className="button button--primary" type="button" onClick={() => onNavigate("home")}>
+            해변으로 돌아가기
           </button>
         </div>
       ) : (

@@ -1,69 +1,83 @@
 import type { AppRoute } from "@/app/use-hash-route";
 import type { OceanSnapshot } from "@/features/ocean/types/ocean";
-import { formatCountdown } from "@/features/ocean/utils/time";
-import { HERO_IMAGE, SEA_LABELS } from "@/shared/brand";
+import {
+  BEACH_IMAGE,
+  BOTTLE_WITH_LETTER_IMAGE,
+  GUIDE_SIGN_IMAGE,
+  KEEPSAKE_IMAGE,
+  WRITING_SET_IMAGE,
+} from "@/shared/brand";
 import { PageHeading } from "@/shared/page-heading";
 
 interface HomeScreenProps {
   snapshot: OceanSnapshot;
-  now: number;
   catching: boolean;
   onNavigate: (route: AppRoute) => void;
   onCatch: () => Promise<void>;
 }
 
-export function HomeScreen({ snapshot, now, catching, onNavigate, onCatch }: HomeScreenProps) {
-  const canCatch = !snapshot.nextCatchAt || snapshot.nextCatchAt <= now || Boolean(snapshot.activeBottle);
-
+export function HomeScreen({ snapshot, catching, onNavigate, onCatch }: HomeScreenProps) {
   return (
-    <section className="home-hero">
-      <img className="home-hero__art" src={HERO_IMAGE} alt="" />
-      <div className="home-hero__wash" />
-      <div className="home-hero__content">
-        <p className="eyebrow eyebrow--dark">익명 병편지</p>
-        <PageHeading>
-          읽혔으면 좋겠지만,
-          <br />
-          <span>남고 싶지는 않은 말.</span>
-        </PageHeading>
-        <p className="home-hero__lead">이름 없이 띄우고, 우연히 읽고, 조용히 사라져요.</p>
-        <div className="hero-actions">
-          <button
-            className="button button--coral button--large"
-            type="button"
-            onClick={() => onNavigate("write")}
-            disabled={snapshot.remainingSends === 0}
-          >
-            병 띄우기
-            <span>{snapshot.remainingSends}/2 남음</span>
-          </button>
-          <button
-            className="button button--cream button--large"
-            type="button"
-            onClick={() => void onCatch()}
-            disabled={!canCatch || catching}
-          >
-            {catching ? "건지는 중…" : snapshot.activeBottle ? "건진 병 보기" : "병 건져보기"}
-            <span>{canCatch ? "12시간마다 1병" : formatCountdown(snapshot.nextCatchAt, now)}</span>
-          </button>
-        </div>
-        <p className="demo-note">DEMO · 띄운 글은 저장되지 않아요.</p>
-      </div>
+    <section className="shore-scene" aria-label="둥둥 해변">
+      <PageHeading className="sr-only">
+        둥둥 해변
+      </PageHeading>
+      <img className="scene-background" src={BEACH_IMAGE} alt="" />
 
-      <div className="ocean-status" aria-label="현재 이용 상태">
-        <div>
-          <span className="status-label">건지는 바다</span>
-          <strong>{SEA_LABELS[snapshot.seaId]}</strong>
-        </div>
-        <div>
-          <span className="status-label">다음 병</span>
-          <strong>{snapshot.activeBottle ? "손에 있어요" : formatCountdown(snapshot.nextCatchAt, now)}</strong>
-        </div>
-        <div>
-          <span className="status-label">잠시 보관 중</span>
-          <strong>{snapshot.keptBottles.length}병</strong>
-        </div>
-      </div>
+      {snapshot.remainingSends > 0 ? (
+        <button
+          className="scene-object scene-object--write"
+          type="button"
+          onClick={() => onNavigate("write")}
+          disabled={catching}
+          aria-label="편지 쓰기"
+        >
+          <img src={WRITING_SET_IMAGE} alt="" />
+          <span aria-hidden="true">편지 쓰기</span>
+        </button>
+      ) : null}
+
+      {snapshot.bottleAvailable ? (
+        <button
+          className={catching ? "scene-object scene-object--bottle scene-object--lifting" : "scene-object scene-object--bottle"}
+          type="button"
+          onClick={() => void onCatch()}
+          disabled={catching}
+          aria-label={snapshot.activeBottle ? "건져 둔 병 보기" : "물가의 병 줍기"}
+          aria-busy={catching}
+        >
+          <img src={BOTTLE_WITH_LETTER_IMAGE} alt="" />
+          <span aria-hidden="true">{snapshot.activeBottle ? "병 보기" : "병 줍기"}</span>
+        </button>
+      ) : null}
+
+      {snapshot.keptBottles.length > 0 ? (
+        <button
+          className="scene-object scene-object--kept"
+          type="button"
+          onClick={() => onNavigate("kept")}
+          disabled={catching}
+          aria-label={`보관한 편지 ${snapshot.keptBottles.length}개 보기`}
+        >
+          <img src={KEEPSAKE_IMAGE} alt="" />
+          <span aria-hidden="true">보관함</span>
+        </button>
+      ) : null}
+
+      <button
+        className="scene-object scene-object--guide"
+        type="button"
+        onClick={() => onNavigate("guide")}
+        disabled={catching}
+        aria-label="둥둥 이용안내와 안전 안내 보기"
+      >
+        <img src={GUIDE_SIGN_IMAGE} alt="" />
+        <span aria-hidden="true">안내</span>
+      </button>
+
+      <p className="sr-only" aria-live="polite">
+        {snapshot.bottleAvailable ? "물가에 주울 병이 있습니다." : "지금 물가에는 병이 없습니다."}
+      </p>
     </section>
   );
 }

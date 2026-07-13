@@ -110,14 +110,7 @@ export class DemoOceanGateway implements OceanGateway {
       throw new OceanError("COOLDOWN", "아직 다음 병을 건질 시간이 아니에요.");
     }
 
-    const unavailable = new Set([
-      ...state.discarded,
-      ...state.reported,
-      ...Object.keys(state.kept),
-    ]);
-    const candidates = SEED_BOTTLES.filter(
-      (bottle) => !unavailable.has(bottle.id) && (state.availableAt[bottle.id] ?? 0) <= currentTime,
-    );
+    const candidates = this.availableBottles(state, currentTime);
 
     if (candidates.length === 0) {
       throw new OceanError("NO_BOTTLE", "지금은 물결 사이에 보이는 병이 없어요.");
@@ -233,7 +226,20 @@ export class DemoOceanGateway implements OceanGateway {
     return Math.max(0, 2 - state.sentAt.length);
   }
 
+  private availableBottles(state: DemoOceanState, currentTime: number) {
+    const unavailable = new Set([
+      ...state.discarded,
+      ...state.reported,
+      ...Object.keys(state.kept),
+    ]);
+
+    return SEED_BOTTLES.filter(
+      (bottle) => !unavailable.has(bottle.id) && (state.availableAt[bottle.id] ?? 0) <= currentTime,
+    );
+  }
+
   private toSnapshot(state: DemoOceanState): OceanSnapshot {
+    const currentTime = this.now();
     const activeSeed = state.activeBottle
       ? SEED_BOTTLES.find((bottle) => bottle.id === state.activeBottle?.id)
       : undefined;
@@ -256,6 +262,9 @@ export class DemoOceanGateway implements OceanGateway {
       seaId: state.seaId,
       remainingSends: this.remainingSends(state),
       nextCatchAt: state.nextCatchAt,
+      bottleAvailable:
+        Boolean(activeBottle) ||
+        ((!state.nextCatchAt || state.nextCatchAt <= currentTime) && this.availableBottles(state, currentTime).length > 0),
       activeBottle,
       keptBottles,
       isDemo: true,

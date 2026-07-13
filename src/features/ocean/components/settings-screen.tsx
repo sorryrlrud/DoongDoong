@@ -19,7 +19,6 @@ export function SettingsScreen({
   onSnapshot,
   onNotice,
 }: SettingsScreenProps) {
-  const [confirmReset, setConfirmReset] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const updateSea = async (seaId: SeaId) => {
@@ -30,12 +29,6 @@ export function SettingsScreen({
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "바다를 바꾸지 못했어요.");
     }
-  };
-
-  const resetDemo = async () => {
-    onSnapshot(await oceanGateway.resetDemo());
-    setConfirmReset(false);
-    onNotice("데모 상태를 처음으로 돌렸어요.");
   };
 
   return (
@@ -76,30 +69,6 @@ export function SettingsScreen({
             <span aria-hidden="true" />
             <strong>{reduceMotion ? "켬" : "끔"}</strong>
           </button>
-        </section>
-
-        <section className="setting-section setting-section--demo" aria-labelledby="setting-demo-title">
-          <div>
-            <p className="demo-stamp">DEMO</p>
-            <h2 id="setting-demo-title">체험 상태 초기화</h2>
-          </div>
-          {confirmReset ? (
-            <div className="inline-confirm" role="group" aria-label="데모 초기화 확인" aria-live="polite">
-              <p>보관 중인 병과 오늘의 이용 상태가 모두 초기화돼요.</p>
-              <div>
-                <button className="button button--small button--ghost" type="button" onClick={() => setConfirmReset(false)}>
-                  취소
-                </button>
-                <button className="button button--small button--danger" type="button" onClick={resetDemo}>
-                  초기화
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button className="button button--ghost" type="button" onClick={() => setConfirmReset(true)}>
-              처음부터 체험하기
-            </button>
-          )}
         </section>
       </div>
     </section>

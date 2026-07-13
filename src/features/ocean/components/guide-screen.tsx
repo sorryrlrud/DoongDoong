@@ -58,8 +58,8 @@ export function GuideScreen({ onNavigate }: GuideScreenProps) {
       </div>
 
       <div className="guide-cta">
-        <button className="button button--coral" type="button" onClick={() => onNavigate("write")}>
-          병 띄우기
+        <button className="button button--secondary" type="button" onClick={() => onNavigate("settings")}>
+          설정
         </button>
       </div>
     </section>

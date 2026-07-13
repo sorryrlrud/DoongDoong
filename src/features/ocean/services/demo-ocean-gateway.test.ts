@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { SEED_BOTTLES } from "@/features/ocean/data/seed-bottles";
 import { DemoOceanGateway, type KeyValueStorage } from "@/features/ocean/services/demo-ocean-gateway";
 
 class MemoryStorage implements KeyValueStorage {
@@ -71,9 +72,55 @@ describe("DemoOceanGateway", () => {
 
     const before = await gateway.getSnapshot();
     expect(before.nextCatchAt).toBeNull();
+    expect(before.bottleAvailable).toBe(true);
 
     const caught = await gateway.catchBottle();
     expect(caught.nextCatchAt).toBe(now + 12 * 60 * 60 * 1000);
+    expect(caught.bottleAvailable).toBe(true);
+  });
+
+  it("shows no shore bottle when every message is unavailable", async () => {
+    const storage = new MemoryStorage();
+    const now = new Date("2026-07-13T10:00:00+09:00").getTime();
+    storage.setItem(
+      "doongdoong.demo-ocean.v1",
+      JSON.stringify({
+        version: 1,
+        seaId: "pacific",
+        sentAt: [],
+        nextCatchAt: null,
+        activeBottle: null,
+        kept: {},
+        availableAt: {},
+        driftCount: {},
+        discarded: SEED_BOTTLES.map((bottle) => bottle.id),
+        reported: [],
+      }),
+    );
+    const gateway = new DemoOceanGateway(storage, () => now, () => 0);
+
+    expect((await gateway.getSnapshot()).bottleAvailable).toBe(false);
+  });
+
+  it("resets all demo activity and returns a fresh shore", async () => {
+    const storage = new MemoryStorage();
+    const now = new Date("2026-07-13T10:00:00+09:00").getTime();
+    const gateway = new DemoOceanGateway(storage, () => now, () => 0);
+
+    await gateway.sendBottle(createDraft());
+    const caught = await gateway.catchBottle();
+    await gateway.openBottle(caught.activeBottle!.id);
+    await gateway.resolveBottle(caught.activeBottle!.id, "keep");
+
+    const reset = await gateway.resetDemo();
+    expect(reset).toMatchObject({
+      seaId: "pacific",
+      remainingSends: 2,
+      nextCatchAt: null,
+      bottleAvailable: true,
+      activeBottle: null,
+      keptBottles: [],
+    });
   });
 
   it("expires kept bottles after thirty days", async () => {
@@ -85,6 +132,7 @@ describe("DemoOceanGateway", () => {
     await gateway.openBottle(caught.activeBottle!.id);
     const kept = await gateway.resolveBottle(caught.activeBottle!.id, "keep");
     expect(kept.keptBottles).toHaveLength(1);
+    expect(kept.bottleAvailable).toBe(false);
 
     now += 30 * 24 * 60 * 60 * 1000 + 1;
     const expired = await gateway.getSnapshot();

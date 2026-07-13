@@ -31,6 +31,7 @@ export interface OceanSnapshot {
   seaId: SeaId;
   remainingSends: number;
   nextCatchAt: number | null;
+  bottleAvailable: boolean;
   activeBottle: ActiveBottle | null;
   keptBottles: KeptBottle[];
   isDemo: boolean;

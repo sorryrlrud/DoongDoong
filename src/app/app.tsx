@@ -1,17 +1,18 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AppShell } from "@/app/app-shell";
 import { loadPreferences, savePreferences, type AppPreferences } from "@/app/preferences";
-import { useHashRoute } from "@/app/use-hash-route";
+import { readAppRoute, useHashRoute } from "@/app/use-hash-route";
 import { CatchScreen } from "@/features/ocean/components/catch-screen";
 import { GuideScreen } from "@/features/ocean/components/guide-screen";
 import { HomeScreen } from "@/features/ocean/components/home-screen";
 import { KeptScreen } from "@/features/ocean/components/kept-screen";
-import { Onboarding } from "@/features/ocean/components/onboarding";
 import { SettingsScreen } from "@/features/ocean/components/settings-screen";
 import { WriteScreen } from "@/features/ocean/components/write-screen";
 import { oceanGateway } from "@/features/ocean/services/runtime";
-import type { OceanSnapshot, SeaId } from "@/features/ocean/types/ocean";
-import { HERO_IMAGE } from "@/shared/brand";
+import type { OceanSnapshot } from "@/features/ocean/types/ocean";
+import { BEACH_IMAGE } from "@/shared/brand";
+
+const wait = (duration: number) => new Promise((resolve) => window.setTimeout(resolve, duration));
 
 export function App() {
   const { route, navigate } = useHashRoute();
@@ -19,8 +20,11 @@ export function App() {
   const [preferences, setPreferences] = useState<AppPreferences>(loadPreferences);
   const [now, setNow] = useState(Date.now);
   const [catching, setCatching] = useState(false);
+  const [resettingDemo, setResettingDemo] = useState(false);
+  const [sceneBusy, setSceneBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const operationEpochRef = useRef(0);
 
   useEffect(() => {
     oceanGateway
@@ -30,8 +34,33 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 60_000);
+    const timer = window.setInterval(() => {
+      const operationEpoch = operationEpochRef.current;
+      setNow(Date.now());
+      oceanGateway
+        .getSnapshot()
+        .then((nextSnapshot) => {
+          if (operationEpochRef.current === operationEpoch) setSnapshot(nextSnapshot);
+        })
+        .catch(() => undefined);
+    }, 60_000);
     return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const syncOtherTab = () => {
+      operationEpochRef.current += 1;
+      const operationEpoch = operationEpochRef.current;
+      oceanGateway
+        .getSnapshot()
+        .then((nextSnapshot) => {
+          if (operationEpochRef.current === operationEpoch) setSnapshot(nextSnapshot);
+        })
+        .catch(() => undefined);
+    };
+
+    window.addEventListener("storage", syncOtherTab);
+    return () => window.removeEventListener("storage", syncOtherTab);
   }, []);
 
   useEffect(() => {
@@ -45,33 +74,54 @@ export function App() {
   }, [notice]);
 
   const showNotice = useCallback((message: string) => setNotice(message), []);
+  const operationEpoch = operationEpochRef.current;
+  const acceptSnapshot = useCallback((nextSnapshot: OceanSnapshot) => {
+    if (operationEpochRef.current === operationEpoch) setSnapshot(nextSnapshot);
+  }, [operationEpoch]);
+  const acceptNotice = useCallback((message: string) => {
+    if (operationEpochRef.current === operationEpoch) showNotice(message);
+  }, [operationEpoch, showNotice]);
 
   const updatePreferences = (next: AppPreferences) => {
     setPreferences(next);
     savePreferences(next);
   };
 
-  const completeOnboarding = async (seaId: SeaId) => {
-    const nextSnapshot = await oceanGateway.updateSea(seaId);
-    setSnapshot(nextSnapshot);
-    updatePreferences({ ...preferences, onboarded: true });
-  };
-
   const catchFromHome = async () => {
-    if (catching) return;
+    if (catching || !snapshot?.bottleAvailable) return;
     setCatching(true);
+    const operationEpoch = operationEpochRef.current;
     try {
       const hadBottle = Boolean(snapshot?.activeBottle);
-      const nextSnapshot = await oceanGateway.catchBottle();
+      const reduceMotion =
+        preferences.reduceMotion || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const [nextSnapshot] = await Promise.all([
+        oceanGateway.catchBottle(),
+        wait(reduceMotion ? 0 : 520),
+      ]);
+      if (operationEpochRef.current !== operationEpoch) return;
       setSnapshot(nextSnapshot);
-      showNotice(hadBottle ? "건진 병을 열어보세요." : "병 하나를 건졌어요.");
-      if (window.location.hash === "" || window.location.hash === "#home" || window.location.hash === "#/home") {
-        navigate("catch");
-      }
+      showNotice(hadBottle ? "병을 다시 만났어요." : "병을 건졌어요.");
+      if (readAppRoute() === "home") navigate("catch");
     } catch (caught) {
       showNotice(caught instanceof Error ? caught.message : "지금은 병을 건질 수 없어요.");
     } finally {
       setCatching(false);
+    }
+  };
+
+  const resetDemo = async () => {
+    if (resettingDemo || sceneBusy || catching) return;
+    operationEpochRef.current += 1;
+    setResettingDemo(true);
+    try {
+      setSnapshot(await oceanGateway.resetDemo());
+      navigate("home");
+      showNotice("처음 해변으로 돌아왔어요.");
+    } catch {
+      showNotice("데모를 초기화하지 못했어요.");
+    } finally {
+      setResettingDemo(false);
     }
   };
 
@@ -91,15 +141,11 @@ export function App() {
   if (!snapshot) {
     return (
       <main className="loading-screen" aria-live="polite">
-        <img src={HERO_IMAGE} alt="" />
+        <img src={BEACH_IMAGE} alt="" />
         <strong>둥둥</strong>
         <span>바다를 불러오는 중…</span>
       </main>
     );
-  }
-
-  if (!preferences.onboarded) {
-    return <Onboarding initialSea={snapshot.seaId} onComplete={completeOnboarding} />;
   }
 
   let content;
@@ -107,19 +153,22 @@ export function App() {
     content = (
       <WriteScreen
         snapshot={snapshot}
+        reduceMotion={preferences.reduceMotion}
         onNavigate={navigate}
-        onSnapshot={setSnapshot}
-        onNotice={showNotice}
+        onSnapshot={acceptSnapshot}
+        onNotice={acceptNotice}
+        onBusyChange={setSceneBusy}
       />
     );
   } else if (route === "catch") {
     content = (
       <CatchScreen
         snapshot={snapshot}
-        now={now}
+        reduceMotion={preferences.reduceMotion}
         onNavigate={navigate}
-        onSnapshot={setSnapshot}
-        onNotice={showNotice}
+        onSnapshot={acceptSnapshot}
+        onNotice={acceptNotice}
+        onBusyChange={setSceneBusy}
       />
     );
   } else if (route === "kept") {
@@ -128,8 +177,8 @@ export function App() {
         snapshot={snapshot}
         now={now}
         onNavigate={navigate}
-        onSnapshot={setSnapshot}
-        onNotice={showNotice}
+        onSnapshot={acceptSnapshot}
+        onNotice={acceptNotice}
       />
     );
   } else if (route === "guide") {
@@ -140,15 +189,14 @@ export function App() {
         snapshot={snapshot}
         reduceMotion={preferences.reduceMotion}
         onReduceMotionChange={(reduceMotion) => updatePreferences({ ...preferences, reduceMotion })}
-        onSnapshot={setSnapshot}
-        onNotice={showNotice}
+        onSnapshot={acceptSnapshot}
+        onNotice={acceptNotice}
       />
     );
   } else {
     content = (
       <HomeScreen
         snapshot={snapshot}
-        now={now}
         catching={catching}
         onNavigate={navigate}
         onCatch={catchFromHome}
@@ -157,7 +205,13 @@ export function App() {
   }
 
   return (
-    <AppShell route={route} snapshot={snapshot} notice={notice} onNavigate={navigate}>
+    <AppShell
+      notice={notice}
+      resettingDemo={resettingDemo}
+      controlsLocked={sceneBusy || catching}
+      onHome={() => navigate("home")}
+      onDemoReset={resetDemo}
+    >
       {content}
     </AppShell>
   );
