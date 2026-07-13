@@ -14,19 +14,16 @@ interface CatchScreenProps {
   onNotice: (message: string) => void;
 }
 
-type ResultKind = "redrift" | "keep" | "discard" | "report" | null;
-
-const RESULT_COPY: Record<Exclude<ResultKind, null>, { title: string; body: string }> = {
-  redrift: { title: "다시 둥둥 띄웠어요.", body: "조금 더 빠른 물결을 타고 다른 누군가에게 흘러갑니다." },
-  keep: { title: "잠시 곁에 두었어요.", body: "30일 동안 보관함에서 다시 읽고, 띄우거나 버릴 수 있어요." },
-  discard: { title: "바다에서 사라졌어요.", body: "이 편지는 되돌아오지 않아요." },
-  report: { title: "신고하고 숨겼어요.", body: "이 병은 더 이상 바다를 떠돌지 않습니다." },
+const RESULT_COPY: Record<BottleResolution, string> = {
+  redrift: "다시 바다에 띄웠어요.",
+  keep: "30일 동안 보관했어요.",
+  discard: "병을 버렸어요.",
+  report: "신고하고 숨겼어요.",
 };
 
 export function CatchScreen({ snapshot, now, onNavigate, onSnapshot, onNotice }: CatchScreenProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<ResultKind>(null);
   const [confirming, setConfirming] = useState<BottleResolution | null>(null);
 
   const catchBottle = async () => {
@@ -62,38 +59,17 @@ export function CatchScreen({ snapshot, now, onNavigate, onSnapshot, onNotice }:
     setBusy(true);
     setError(null);
     try {
-      onSnapshot(await oceanGateway.resolveBottle(active.id, resolution));
-      setResult(resolution);
+      const nextSnapshot = await oceanGateway.resolveBottle(active.id, resolution);
+      onSnapshot(nextSnapshot);
       setConfirming(null);
-      onNotice(RESULT_COPY[resolution].title);
+      onNotice(RESULT_COPY[resolution]);
+      onNavigate("home");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "병을 처리하지 못했어요.");
     } finally {
       setBusy(false);
     }
   };
-
-  if (result) {
-    return (
-      <section className="screen screen--centered result-screen">
-        <div className={`result-token result-token--${result}`} aria-hidden="true">
-          {result === "redrift" ? "둥둥" : result === "keep" ? "30일" : result === "report" ? "신고" : "안녕"}
-        </div>
-        <PageHeading>{RESULT_COPY[result].title}</PageHeading>
-        <p className="screen-lead">{RESULT_COPY[result].body}</p>
-        <div className="stack-actions">
-          <button className="button button--primary" type="button" onClick={() => onNavigate("home")}>
-            바다로 돌아가기
-          </button>
-          {result === "keep" ? (
-            <button className="button button--ghost" type="button" onClick={() => onNavigate("kept")}>
-              보관함 보기
-            </button>
-          ) : null}
-        </div>
-      </section>
-    );
-  }
 
   const active = snapshot.activeBottle;
   if (!active) {
@@ -105,18 +81,17 @@ export function CatchScreen({ snapshot, now, onNavigate, onSnapshot, onNotice }:
           <span className="catch-visual__label">{canCatch ? "병 하나가 보여요" : "잔잔한 물결뿐이에요"}</span>
         </div>
         <div className="catch-copy">
-          <p className="eyebrow">완전히 블라인드로 만나요</p>
-          <PageHeading>{canCatch ? "물결 사이에 병 하나가 보여요." : "다음 물결을 기다려요."}</PageHeading>
+          <p className="eyebrow">완전 블라인드</p>
+          <PageHeading>{canCatch ? "병을 건져볼까요?" : "다음 병을 기다려요."}</PageHeading>
           <p className="screen-lead">
             {canCatch
-              ? "어디에서 왔는지, 어떤 언어인지, 얼마나 긴 글인지도 열기 전에는 알 수 없어요."
-              : `다음 병은 ${formatCountdown(snapshot.nextCatchAt, now)} 건질 수 있어요.`}
+              ? "열기 전에는 아무 정보도 보이지 않아요."
+              : formatCountdown(snapshot.nextCatchAt, now)}
           </p>
           {error ? <div className="alert" role="alert">{error}</div> : null}
           <button className="button button--coral button--large" type="button" onClick={catchBottle} disabled={!canCatch || busy}>
             {busy ? "물결을 살피는 중…" : canCatch ? "병 건져보기" : formatCountdown(snapshot.nextCatchAt, now)}
           </button>
-          <p className="fine-print">병을 건진 순간부터 다음 12시간이 시작돼요.</p>
         </div>
       </section>
     );
@@ -129,31 +104,18 @@ export function CatchScreen({ snapshot, now, onNavigate, onSnapshot, onNotice }:
           <img src={HERO_IMAGE} alt="" />
         </div>
         <div className="closed-bottle-copy">
-          <p className="eyebrow">방금 건진 이름 없는 병</p>
-          <PageHeading>안을 열어볼까요?</PageHeading>
-          <p className="screen-lead">출발한 곳도, 언어도, 날짜도 보이지 않아요. 열지 않고 다시 띄워도 괜찮습니다.</p>
+          <p className="eyebrow">이름 없는 병</p>
+          <PageHeading>열어볼까요?</PageHeading>
+          <p className="screen-lead">열지 않고 다시 띄워도 괜찮아요.</p>
           {error ? <div className="alert" role="alert">{error}</div> : null}
           <div className="stack-actions stack-actions--wide">
             <button className="button button--coral button--large" type="button" onClick={openBottle} disabled={busy}>
-              조심히 열어보기
+              열어보기
             </button>
-            <button className="button button--ghost" type="button" onClick={() => setConfirming("redrift")} disabled={busy}>
+            <button className="button button--ghost" type="button" onClick={() => resolveBottle("redrift")} disabled={busy}>
               열지 않고 다시 띄우기
             </button>
           </div>
-          {confirming === "redrift" ? (
-            <div className="inline-confirm" role="alertdialog" aria-label="다시 띄우기 확인">
-              <p>안을 보지 않고 다시 띄울까요? 이 병은 다른 누군가에게 흘러갑니다.</p>
-              <div>
-                <button className="button button--small button--ghost" type="button" onClick={() => setConfirming(null)}>
-                  그대로 둘게요
-                </button>
-                <button className="button button--small button--primary" type="button" onClick={() => resolveBottle("redrift")}>
-                  다시 띄우기
-                </button>
-              </div>
-            </div>
-          ) : null}
         </div>
       </section>
     );
@@ -162,10 +124,7 @@ export function CatchScreen({ snapshot, now, onNavigate, onSnapshot, onNotice }:
   const content = active.content;
   return (
     <section className="screen opened-bottle-screen">
-      <div className="screen-header screen-header--center">
-        <p className="eyebrow">어딘가에서 떠밀려온 편지</p>
-        <PageHeading>잠시 머물다 갈 문장이에요.</PageHeading>
-      </div>
+      <p className="eyebrow received-label">받은 편지</p>
       {error ? <div className="alert" role="alert">{error}</div> : null}
       <article className="letter-paper letter-paper--received" dir="auto">
         {content.dateLabel ? <time>{content.dateLabel}</time> : null}
@@ -189,7 +148,7 @@ export function CatchScreen({ snapshot, now, onNavigate, onSnapshot, onNotice }:
       </div>
 
       {confirming === "discard" ? (
-        <div className="inline-confirm inline-confirm--center" role="alertdialog" aria-label="병 버리기 확인">
+        <div className="inline-confirm inline-confirm--center" role="group" aria-label="병 버리기 확인" aria-live="polite">
           <p>버리면 이 글은 사라지고 되돌릴 수 없어요.</p>
           <div>
             <button className="button button--small button--ghost" type="button" onClick={() => setConfirming(null)}>
@@ -204,7 +163,7 @@ export function CatchScreen({ snapshot, now, onNavigate, onSnapshot, onNotice }:
 
       <div className="report-area">
         {confirming === "report" ? (
-          <div className="inline-confirm inline-confirm--center" role="alertdialog" aria-label="신고 확인">
+          <div className="inline-confirm inline-confirm--center" role="group" aria-label="신고 확인" aria-live="polite">
             <p>불쾌하거나 위험한 내용인가요? 신고하면 즉시 숨겨집니다.</p>
             <div>
               <button className="button button--small button--ghost" type="button" onClick={() => setConfirming(null)}>

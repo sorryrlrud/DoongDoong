@@ -21,7 +21,7 @@ export const formatCountdown = (target: number | null, now: number): string => {
 };
 
 export const formatExpiry = (expiresAt: number, now: number): string => {
-  const remainingDays = Math.max(0, Math.ceil((expiresAt - now) / 86_400_000));
+  const remainingDays = Math.min(30, Math.max(0, Math.ceil((expiresAt - now) / 86_400_000)));
   if (remainingDays <= 1) {
     return "내일 사라져요";
   }

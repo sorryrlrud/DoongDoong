@@ -29,7 +29,7 @@ export function AppShell({ route, snapshot, notice, onNavigate, children }: AppS
           <span className="brand__en">DOONGDOONG</span>
         </button>
         <nav className="desktop-nav" aria-label="주요 메뉴">
-          {NAV_ITEMS.map((item) => (
+          {NAV_ITEMS.filter((item) => item.route !== "home").map((item) => (
             <button
               key={item.route}
               className={route === item.route ? "nav-link nav-link--active" : "nav-link"}

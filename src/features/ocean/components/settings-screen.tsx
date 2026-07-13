@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { SeaPicker } from "@/features/ocean/components/sea-picker";
 import { oceanGateway } from "@/features/ocean/services/runtime";
 import { SEA_OPTIONS, type OceanSnapshot, type SeaId } from "@/features/ocean/types/ocean";
 import { PageHeading } from "@/shared/page-heading";
@@ -40,9 +41,7 @@ export function SettingsScreen({
   return (
     <section className="screen settings-screen">
       <div className="screen-header">
-        <p className="eyebrow">내 기기에서만 기억해요</p>
         <PageHeading>설정</PageHeading>
-        <p>위치 권한이나 프로필 없이, 어떤 바다에서 건질지만 고를 수 있어요.</p>
       </div>
 
       {error ? <div className="alert" role="alert">{error}</div> : null}
@@ -51,28 +50,21 @@ export function SettingsScreen({
         <section className="setting-section" aria-labelledby="setting-sea-title">
           <div>
             <h2 id="setting-sea-title">병을 건질 바다</h2>
-            <p>실제 위치와는 상관없어요. 손에 든 병이 없을 때 바꿀 수 있습니다.</p>
+            {snapshot.activeBottle ? <p>손에 든 병을 먼저 보내세요.</p> : null}
           </div>
-          <div className="sea-picker sea-picker--wide" role="radiogroup" aria-labelledby="setting-sea-title">
-            {SEA_OPTIONS.map((sea) => (
-              <button
-                key={sea.id}
-                className={snapshot.seaId === sea.id ? "sea-chip sea-chip--selected" : "sea-chip"}
-                type="button"
-                role="radio"
-                aria-checked={snapshot.seaId === sea.id}
-                onClick={() => updateSea(sea.id)}
-              >
-                {sea.name}
-              </button>
-            ))}
-          </div>
+          <SeaPicker
+            value={snapshot.seaId}
+            name="settings-sea"
+            label="병을 건질 바다"
+            wide
+            disabled={Boolean(snapshot.activeBottle)}
+            onChange={updateSea}
+          />
         </section>
 
         <section className="setting-section setting-section--row" aria-labelledby="setting-motion-title">
           <div>
             <h2 id="setting-motion-title">움직임 줄이기</h2>
-            <p>잔물결처럼 움직이는 효과를 멈춥니다.</p>
           </div>
           <button
             className={reduceMotion ? "toggle toggle--on" : "toggle"}
@@ -90,10 +82,9 @@ export function SettingsScreen({
           <div>
             <p className="demo-stamp">DEMO</p>
             <h2 id="setting-demo-title">체험 상태 초기화</h2>
-            <p>12시간 기다리지 않고 처음부터 흐름을 다시 확인할 수 있어요.</p>
           </div>
           {confirmReset ? (
-            <div className="inline-confirm" role="alertdialog" aria-label="데모 초기화 확인">
+            <div className="inline-confirm" role="group" aria-label="데모 초기화 확인" aria-live="polite">
               <p>보관 중인 병과 오늘의 이용 상태가 모두 초기화돼요.</p>
               <div>
                 <button className="button button--small button--ghost" type="button" onClick={() => setConfirmReset(false)}>

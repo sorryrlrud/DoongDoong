@@ -18,6 +18,7 @@ export function App() {
   const [snapshot, setSnapshot] = useState<OceanSnapshot | null>(null);
   const [preferences, setPreferences] = useState<AppPreferences>(loadPreferences);
   const [now, setNow] = useState(Date.now);
+  const [catching, setCatching] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -54,6 +55,24 @@ export function App() {
     const nextSnapshot = await oceanGateway.updateSea(seaId);
     setSnapshot(nextSnapshot);
     updatePreferences({ ...preferences, onboarded: true });
+  };
+
+  const catchFromHome = async () => {
+    if (catching) return;
+    setCatching(true);
+    try {
+      const hadBottle = Boolean(snapshot?.activeBottle);
+      const nextSnapshot = await oceanGateway.catchBottle();
+      setSnapshot(nextSnapshot);
+      showNotice(hadBottle ? "건진 병을 열어보세요." : "병 하나를 건졌어요.");
+      if (window.location.hash === "" || window.location.hash === "#home" || window.location.hash === "#/home") {
+        navigate("catch");
+      }
+    } catch (caught) {
+      showNotice(caught instanceof Error ? caught.message : "지금은 병을 건질 수 없어요.");
+    } finally {
+      setCatching(false);
+    }
   };
 
   if (loadError) {
@@ -126,7 +145,15 @@ export function App() {
       />
     );
   } else {
-    content = <HomeScreen snapshot={snapshot} now={now} onNavigate={navigate} />;
+    content = (
+      <HomeScreen
+        snapshot={snapshot}
+        now={now}
+        catching={catching}
+        onNavigate={navigate}
+        onCatch={catchFromHome}
+      />
+    );
   }
 
   return (
