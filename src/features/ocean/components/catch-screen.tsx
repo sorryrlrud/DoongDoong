@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
 import type { AppRoute } from "@/app/use-hash-route";
 import { oceanGateway } from "@/features/ocean/services/runtime";
 import type { BottleResolution, OceanSnapshot } from "@/features/ocean/types/ocean";
@@ -123,8 +123,12 @@ export function CatchScreen({
   }
 
   const content = active.content;
+  const returnToShore = (event: MouseEvent<HTMLElement>) => {
+    if (!busy && !confirming && event.target === event.currentTarget) onNavigate("home");
+  };
+
   return (
-    <section className="opened-letter-scene">
+    <section className="opened-letter-scene" onClick={returnToShore}>
       <img className="scene-background" src={BEACH_IMAGE} alt="" />
       <PageHeading className="sr-only">
         받은 편지

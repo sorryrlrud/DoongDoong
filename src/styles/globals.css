@@ -2577,6 +2577,7 @@ h3,
   width: clamp(100px, 15vw, 185px);
   transform: rotate(9deg);
   opacity: 0.74;
+  pointer-events: none;
 }
 
 .catch-letter {
