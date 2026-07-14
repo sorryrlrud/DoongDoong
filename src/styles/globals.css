@@ -2300,8 +2300,8 @@ h3,
 }
 
 .scene-object--guide {
-  bottom: clamp(8px, 2vh, 28px);
-  left: 42%;
+  top: 47%;
+  right: clamp(16px, 4vw, 64px);
   width: clamp(86px, 9vw, 124px);
   transform-origin: center bottom;
   animation: scene-box-breathe 6.8s ease-in-out infinite;
@@ -2682,7 +2682,7 @@ h3,
 .scene-report {
   position: absolute;
   z-index: 9;
-  right: 18px;
+  right: clamp(64px, 8vw, 110px);
   bottom: calc(6px + env(safe-area-inset-bottom));
 }
 
@@ -2733,9 +2733,10 @@ h3,
   }
 
   .scene-object--guide {
-    right: auto;
-    bottom: calc(1px + env(safe-area-inset-bottom));
-    left: 43%;
+    top: 47%;
+    right: 4px;
+    bottom: auto;
+    left: auto;
     width: 70px;
   }
 
@@ -2831,7 +2832,7 @@ h3,
   }
 
   .scene-report {
-    right: 8px;
+    right: 58px;
     bottom: calc(2px + env(safe-area-inset-bottom));
   }
 
