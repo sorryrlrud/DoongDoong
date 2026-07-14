@@ -2282,8 +2282,8 @@ h3,
 }
 
 .scene-object--bottle {
-  bottom: clamp(160px, 23vh, 270px);
-  left: 53%;
+  bottom: clamp(190px, 29vh, 330px);
+  left: 42%;
   width: clamp(92px, 10vw, 142px);
   animation: scene-shore-bob 4.8s ease-in-out infinite;
 }
@@ -2300,8 +2300,10 @@ h3,
 }
 
 .scene-object--guide {
-  top: 47%;
+  top: auto;
   right: clamp(16px, 4vw, 64px);
+  bottom: clamp(128px, 22vh, 210px);
+  left: auto;
   width: clamp(86px, 9vw, 124px);
   transform-origin: center bottom;
   animation: scene-box-breathe 6.8s ease-in-out infinite;
@@ -2722,8 +2724,8 @@ h3,
   }
 
   .scene-object--bottle {
-    bottom: 28vh;
-    left: 51%;
+    bottom: 36vh;
+    left: 35%;
     width: clamp(74px, 22vw, 100px);
   }
 
@@ -2734,9 +2736,9 @@ h3,
   }
 
   .scene-object--guide {
-    top: 47%;
+    top: auto;
     right: 4px;
-    bottom: auto;
+    bottom: 24vh;
     left: auto;
     width: 70px;
   }
