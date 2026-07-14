@@ -3,6 +3,7 @@ import type { OceanSnapshot } from "@/features/ocean/types/ocean";
 import {
   BEACH_IMAGE,
   BOTTLE_WITH_LETTER_IMAGE,
+  EMPTY_BOTTLE_IMAGE,
   GUIDE_SIGN_IMAGE,
   KEEPSAKE_IMAGE,
   WRITING_SET_IMAGE,
@@ -33,7 +34,7 @@ export function HomeScreen({ snapshot, catching, onNavigate, onCatch }: HomeScre
           aria-label="편지 쓰기"
         >
           <img src={WRITING_SET_IMAGE} alt="" />
-          <span aria-hidden="true">편지 쓰기</span>
+          <img className="scene-object__empty-bottle" src={EMPTY_BOTTLE_IMAGE} alt="" />
         </button>
       ) : null}
 
@@ -47,7 +48,6 @@ export function HomeScreen({ snapshot, catching, onNavigate, onCatch }: HomeScre
           aria-busy={catching}
         >
           <img src={BOTTLE_WITH_LETTER_IMAGE} alt="" />
-          <span aria-hidden="true">{snapshot.activeBottle ? "병 보기" : "병 줍기"}</span>
         </button>
       ) : null}
 
@@ -60,7 +60,6 @@ export function HomeScreen({ snapshot, catching, onNavigate, onCatch }: HomeScre
           aria-label={`보관한 편지 ${snapshot.keptBottles.length}개 보기`}
         >
           <img src={KEEPSAKE_IMAGE} alt="" />
-          <span aria-hidden="true">보관함</span>
         </button>
       ) : null}
 
@@ -72,7 +71,6 @@ export function HomeScreen({ snapshot, catching, onNavigate, onCatch }: HomeScre
         aria-label="둥둥 이용안내와 안전 안내 보기"
       >
         <img src={GUIDE_SIGN_IMAGE} alt="" />
-        <span aria-hidden="true">안내</span>
       </button>
 
       <p className="sr-only" aria-live="polite">

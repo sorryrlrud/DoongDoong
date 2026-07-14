@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import type { AppRoute } from "@/app/use-hash-route";
 import { oceanGateway, safetyProvider } from "@/features/ocean/services/runtime";
 import { SEA_OPTIONS, type OceanSnapshot, type SeaId } from "@/features/ocean/types/ocean";
@@ -10,7 +10,6 @@ interface WriteScreenProps {
   reduceMotion: boolean;
   onNavigate: (route: AppRoute) => void;
   onSnapshot: (snapshot: OceanSnapshot) => void;
-  onNotice: (message: string) => void;
   onBusyChange: (busy: boolean) => void;
 }
 
@@ -23,7 +22,6 @@ export function WriteScreen({
   reduceMotion,
   onNavigate,
   onSnapshot,
-  onNotice,
   onBusyChange,
 }: WriteScreenProps) {
   const [body, setBody] = useState("");
@@ -82,7 +80,6 @@ export function WriteScreen({
       setStage("launching");
       await wait(motionOff ? 0 : 1_450);
       if (window.location.hash.replace(/^#\/?/, "") === "write") {
-        onNotice("병을 바다에 띄웠어요.");
         onNavigate("home");
       }
     } catch (caught) {
@@ -114,8 +111,15 @@ export function WriteScreen({
     );
   }
 
+  const returnToShore = (event: MouseEvent<HTMLElement>) => {
+    if (stage === "editing" && !checking && event.target === event.currentTarget) onNavigate("home");
+  };
+
   return (
-    <section className={stage === "packing" ? "write-stage write-stage--packing" : "write-stage"}>
+    <section
+      className={stage === "packing" ? "write-stage write-stage--packing" : "write-stage"}
+      onClick={returnToShore}
+    >
       <img className="scene-background" src={BEACH_IMAGE} alt="" />
       <PageHeading className="sr-only">
         편지를 써서 병에 담기
@@ -199,7 +203,6 @@ export function WriteScreen({
       >
         <img className="write-bottle__empty" src={EMPTY_BOTTLE_IMAGE} alt="" />
         <img className="write-bottle__filled" src={BOTTLE_WITH_LETTER_IMAGE} alt="" />
-        <span aria-hidden="true">{checking ? "살피는 중…" : "병에 담기"}</span>
       </button>
 
       <p className="sr-only" aria-live="polite">

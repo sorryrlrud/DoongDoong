@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { SeaPicker } from "@/features/ocean/components/sea-picker";
 import { oceanGateway } from "@/features/ocean/services/runtime";
-import { SEA_OPTIONS, type OceanSnapshot, type SeaId } from "@/features/ocean/types/ocean";
+import { type OceanSnapshot, type SeaId } from "@/features/ocean/types/ocean";
 import { PageHeading } from "@/shared/page-heading";
 
 interface SettingsScreenProps {
@@ -9,7 +9,6 @@ interface SettingsScreenProps {
   reduceMotion: boolean;
   onReduceMotionChange: (value: boolean) => void;
   onSnapshot: (snapshot: OceanSnapshot) => void;
-  onNotice: (message: string) => void;
 }
 
 export function SettingsScreen({
@@ -17,7 +16,6 @@ export function SettingsScreen({
   reduceMotion,
   onReduceMotionChange,
   onSnapshot,
-  onNotice,
 }: SettingsScreenProps) {
   const [error, setError] = useState<string | null>(null);
 
@@ -25,7 +23,6 @@ export function SettingsScreen({
     setError(null);
     try {
       onSnapshot(await oceanGateway.updateSea(seaId));
-      onNotice(`${SEA_OPTIONS.find((sea) => sea.id === seaId)?.name ?? "새 바다"}에서 병을 건져요.`);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "바다를 바꾸지 못했어요.");
     }

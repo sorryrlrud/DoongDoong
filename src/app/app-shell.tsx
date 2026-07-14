@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 
 interface AppShellProps {
-  notice: string | null;
   resettingDemo: boolean;
   controlsLocked: boolean;
   onHome: () => void;
@@ -10,7 +9,6 @@ interface AppShellProps {
 }
 
 export function AppShell({
-  notice,
   resettingDemo,
   controlsLocked,
   onHome,
@@ -45,10 +43,6 @@ export function AppShell({
       <main id="main-content" className="main-content">
         {children}
       </main>
-
-      <div className="sr-live" aria-live="polite" aria-atomic="true">
-        {notice}
-      </div>
     </div>
   );
 }

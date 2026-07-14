@@ -10,10 +10,9 @@ interface KeptScreenProps {
   now: number;
   onNavigate: (route: AppRoute) => void;
   onSnapshot: (snapshot: OceanSnapshot) => void;
-  onNotice: (message: string) => void;
 }
 
-export function KeptScreen({ snapshot, now, onNavigate, onSnapshot, onNotice }: KeptScreenProps) {
+export function KeptScreen({ snapshot, now, onNavigate, onSnapshot }: KeptScreenProps) {
   const [pendingDiscardId, setPendingDiscardId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -23,7 +22,6 @@ export function KeptScreen({ snapshot, now, onNavigate, onSnapshot, onNotice }: 
     setError(null);
     try {
       onSnapshot(await oceanGateway.resolveBottle(id, resolution));
-      onNotice(resolution === "redrift" ? "병을 다시 띄웠어요." : "병을 버렸어요.");
       setPendingDiscardId(null);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "병을 처리하지 못했어요.");

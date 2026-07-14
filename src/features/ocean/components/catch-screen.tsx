@@ -10,16 +10,10 @@ interface CatchScreenProps {
   reduceMotion: boolean;
   onNavigate: (route: AppRoute) => void;
   onSnapshot: (snapshot: OceanSnapshot) => void;
-  onNotice: (message: string) => void;
   onBusyChange: (busy: boolean) => void;
 }
 
-const RESULT_COPY: Record<BottleResolution, string> = {
-  redrift: "다시 바다에 띄웠어요.",
-  keep: "30일 동안 보관했어요.",
-  discard: "병을 버렸어요.",
-  report: "신고하고 숨겼어요.",
-};
+type CatchResolution = Exclude<BottleResolution, "discard">;
 
 const wait = (duration: number) => new Promise((resolve) => window.setTimeout(resolve, duration));
 
@@ -28,13 +22,12 @@ export function CatchScreen({
   reduceMotion,
   onNavigate,
   onSnapshot,
-  onNotice,
   onBusyChange,
 }: CatchScreenProps) {
   const [busy, setBusy] = useState(false);
   const [opening, setOpening] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [confirming, setConfirming] = useState<BottleResolution | null>(null);
+  const [confirming, setConfirming] = useState<"report" | null>(null);
 
   useEffect(() => {
     if (!snapshot.activeBottle) onNavigate("home");
@@ -56,7 +49,6 @@ export function CatchScreen({
         wait(motionOff ? 0 : 680),
       ]);
       onSnapshot(nextSnapshot);
-      onNotice("편지를 열었어요.");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "병을 열지 못했어요.");
     } finally {
@@ -66,7 +58,7 @@ export function CatchScreen({
     }
   };
 
-  const resolveBottle = async (resolution: BottleResolution) => {
+  const resolveBottle = async (resolution: CatchResolution) => {
     const active = snapshot.activeBottle;
     if (!active || busy) return;
     setBusy(true);
@@ -76,7 +68,6 @@ export function CatchScreen({
       const nextSnapshot = await oceanGateway.resolveBottle(active.id, resolution);
       onSnapshot(nextSnapshot);
       setConfirming(null);
-      onNotice(RESULT_COPY[resolution]);
       if (window.location.hash.replace(/^#\/?/, "") === "catch") onNavigate("home");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "병을 처리하지 못했어요.");
@@ -114,7 +105,6 @@ export function CatchScreen({
           aria-busy={opening}
         >
           <img src={BOTTLE_WITH_LETTER_IMAGE} alt="" />
-          <span aria-hidden="true">열어보기</span>
         </button>
 
         <button
@@ -156,20 +146,7 @@ export function CatchScreen({
         <button type="button" onClick={() => void resolveBottle("keep")} disabled={busy || Boolean(confirming)}>
           보관하기
         </button>
-        <button type="button" onClick={() => setConfirming("discard")} disabled={busy || Boolean(confirming)}>
-          버리기
-        </button>
       </div>
-
-      {confirming === "discard" ? (
-        <div className="scene-confirm" role="group" aria-label="편지 버리기 확인" aria-live="polite">
-          <p>버리면 다시 볼 수 없어요.</p>
-          <div>
-            <button type="button" onClick={() => setConfirming(null)}>취소</button>
-            <button type="button" onClick={() => void resolveBottle("discard")} disabled={busy}>버리기</button>
-          </div>
-        </div>
-      ) : null}
 
       <div className="scene-report">
         {confirming !== "report" ? (
