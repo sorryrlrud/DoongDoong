@@ -53,7 +53,7 @@ src/
 
 ## 관리자 페이지
 
-운영 환경에서 `#/admin`으로 접속하면 사용자·메시지 통계, UID 조회, 메시지 상태와 신고 격리 목록을 확인할 수 있습니다. 관리자 함수는 GitHub identity가 연결되고 `public.users.role = 'admin'`, `status = 'active'`인 계정만 실행할 수 있습니다. 권한이 없는 계정은 먼저 GitHub를 연결한 뒤, 해당 UID만 관리자 역할로 승격합니다.
+운영 환경에서 `#/admin`으로 접속하면 사용자·메시지 통계, UID 조회, 메시지 상태와 신고 격리 목록을 확인할 수 있습니다. 관리자 함수는 GitHub identity가 연결되고 `public.users.role = 'admin'`, `status = 'active'`인 계정만 실행할 수 있습니다. 권한이 없는 계정은 GitHub로 로그인한 뒤, 해당 UID만 관리자 역할로 승격합니다.
 
 관리자 페이지는 현재 읽기 전용입니다. 일반 클라이언트에는 `users`, `messages` 테이블 직접 조회 권한이 없으며, 관리자 전용 RPC가 서버에서 역할을 다시 검사합니다.
 

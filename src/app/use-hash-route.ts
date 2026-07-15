@@ -4,11 +4,15 @@ export type AppRoute = "home" | "write" | "catch" | "kept" | "guide" | "settings
 
 const ROUTES = new Set<AppRoute>(["home", "write", "catch", "kept", "guide", "settings", "admin"]);
 
-const readHash = () => window.location.hash.replace(/^#\/?/, "");
+const readHash = (): string => {
+  const hashRoute = window.location.hash.replace(/^#\/?/, "").split("#", 1)[0];
+  if (ROUTES.has(hashRoute as AppRoute)) return hashRoute;
+
+  return new URLSearchParams(window.location.search).get("admin") === "1" ? "admin" : "home";
+};
 
 export const readAppRoute = (): AppRoute => {
-  const hash = readHash() as AppRoute;
-  return ROUTES.has(hash) ? hash : "home";
+  return readHash() as AppRoute;
 };
 
 export const useHashRoute = () => {
