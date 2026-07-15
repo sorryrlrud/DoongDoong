@@ -122,7 +122,7 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
               </button>
             ) : (
               <button className="button button--primary" type="button" onClick={() => void beginGitHubLogin()} disabled={linkingGitHub}>
-                {linkingGitHub ? "GitHub로 이동 중…" : "GitHub 계정 연결"}
+                {linkingGitHub ? "GitHub로 이동 중…" : "GitHub로 로그인"}
               </button>
             )}
             <button className="button button--ghost" type="button" onClick={onExit}>

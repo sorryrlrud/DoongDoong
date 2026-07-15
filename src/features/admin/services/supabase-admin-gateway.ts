@@ -24,6 +24,8 @@ export class SupabaseAdminGateway implements AdminGateway {
     redirectUrl.searchParams.set("admin", "1");
     const redirectTo = redirectUrl.toString();
     const options = { redirectTo, skipBrowserRedirect: true };
+    const { error: signOutError } = await this.client.auth.signOut({ scope: "local" });
+    if (signOutError) throw signOutError;
     const response = await this.client.auth.signInWithOAuth({ provider: "github", options });
 
     if (response.error) throw response.error;
