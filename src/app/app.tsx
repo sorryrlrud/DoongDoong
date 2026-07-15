@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppShell } from "@/app/app-shell";
+import { AdminScreen } from "@/features/admin/components/admin-screen";
 import {
   loadPreferences,
   resetPreferences,
@@ -14,7 +15,7 @@ import { KeptScreen } from "@/features/ocean/components/kept-screen";
 import { Onboarding } from "@/features/ocean/components/onboarding";
 import { SettingsScreen } from "@/features/ocean/components/settings-screen";
 import { WriteScreen } from "@/features/ocean/components/write-screen";
-import { oceanGateway } from "@/features/ocean/services/runtime";
+import { adminGateway, oceanGateway } from "@/features/ocean/services/runtime";
 import type { OceanSnapshot } from "@/features/ocean/types/ocean";
 import { BEACH_IMAGE } from "@/shared/brand";
 
@@ -137,6 +138,10 @@ export function App() {
         <span>바다를 불러오는 중…</span>
       </main>
     );
+  }
+
+  if (route === "admin") {
+    return <AdminScreen gateway={adminGateway} onExit={() => navigate("home")} />;
   }
 
   if (!preferences.onboarded) {

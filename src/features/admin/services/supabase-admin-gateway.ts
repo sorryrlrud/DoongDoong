@@ -1,0 +1,47 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { ensureSupabaseSession } from "@/features/ocean/services/supabase-client";
+import type {
+  AdminDashboard,
+  AdminDashboardFilters,
+  AdminAuthInfo,
+  AdminGateway,
+} from "@/features/admin/types/admin";
+
+export class SupabaseAdminGateway implements AdminGateway {
+  constructor(private readonly client: SupabaseClient) {}
+
+  async getAuthInfo(): Promise<AdminAuthInfo> {
+    const user = await ensureSupabaseSession(this.client);
+    return {
+      userId: user.id,
+      hasGitHubIdentity: user.identities?.some((identity) => identity.provider === "github") ?? false,
+    };
+  }
+
+  async beginGitHubLogin(): Promise<void> {
+    const user = await ensureSupabaseSession(this.client);
+    const redirectTo = `${window.location.origin}${window.location.pathname}#/admin`;
+    const options = { redirectTo, skipBrowserRedirect: true };
+    const response = user.is_anonymous
+      ? await this.client.auth.linkIdentity({ provider: "github", options })
+      : await this.client.auth.signInWithOAuth({ provider: "github", options });
+
+    if (response.error) throw response.error;
+    if (!response.data.url) throw new Error("GitHub 로그인 주소를 만들지 못했습니다.");
+    window.location.assign(response.data.url);
+  }
+
+  async getDashboard(filters: AdminDashboardFilters = {}): Promise<AdminDashboard> {
+    await ensureSupabaseSession(this.client);
+    const query = filters.query?.trim() || null;
+    const status = filters.status && filters.status !== "all" ? filters.status : null;
+    const { data, error } = await this.client.rpc("admin_dashboard", {
+      p_query: query,
+      p_status: status,
+      p_limit: 50,
+    });
+
+    if (error) throw error;
+    return data as AdminDashboard;
+  }
+}

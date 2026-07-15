@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 
-export type AppRoute = "home" | "write" | "catch" | "kept" | "guide" | "settings";
+export type AppRoute = "home" | "write" | "catch" | "kept" | "guide" | "settings" | "admin";
 
-const ROUTES = new Set<AppRoute>(["home", "write", "catch", "kept", "guide", "settings"]);
+const ROUTES = new Set<AppRoute>(["home", "write", "catch", "kept", "guide", "settings", "admin"]);
 
 const readHash = () => window.location.hash.replace(/^#\/?/, "");
 

@@ -1,4 +1,5 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { ensureSupabaseSession } from "@/features/ocean/services/supabase-client";
 import {
   OceanError,
   type BottleDraft,
@@ -40,14 +41,7 @@ const ERROR_CODES = [
 ] as const;
 
 export class SupabaseOceanGateway implements OceanGateway {
-  private readonly client: SupabaseClient;
-  private authPromise: Promise<void> | null = null;
-
-  constructor(url: string, publishableKey: string) {
-    this.client = createClient(url, publishableKey, {
-      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
-    });
-  }
+  constructor(private readonly client: SupabaseClient) {}
 
   async getSnapshot(): Promise<OceanSnapshot> {
     return this.call("ocean_snapshot");
@@ -89,26 +83,8 @@ export class SupabaseOceanGateway implements OceanGateway {
     return this.getSnapshot();
   }
 
-  private async ensureAuthenticated(): Promise<void> {
-    if (!this.authPromise) {
-      this.authPromise = (async () => {
-        const { data, error } = await this.client.auth.getSession();
-        if (error) throw error;
-        if (data.session) return;
-
-        const { error: signInError } = await this.client.auth.signInAnonymously();
-        if (signInError) throw signInError;
-      })().catch((error) => {
-        this.authPromise = null;
-        throw error;
-      });
-    }
-
-    await this.authPromise;
-  }
-
   private async call(functionName: string, args?: Record<string, unknown>): Promise<OceanSnapshot> {
-    await this.ensureAuthenticated();
+    await ensureSupabaseSession(this.client);
     const { data, error } = await this.client.rpc(functionName, args);
 
     if (error) {
