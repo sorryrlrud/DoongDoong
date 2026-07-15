@@ -1,140 +1,65 @@
-# 운영 백엔드 설계
+# 운영 데이터베이스 설계
 
-## 결정
+## 현재 결정: Supabase PostgreSQL
 
-GitHub Pages는 HTML, CSS, JavaScript만 제공하는 정적 호스팅이므로 공용 파일시스템·메시지 큐·비밀 API 키를 둘 수 없습니다. 실제 무작위 전달은 Firebase를 별도 백엔드로 사용합니다.
+GitHub Pages는 정적 파일만 배포하지만, 브라우저에서 Supabase Auth와 Data API를 HTTPS로 호출할 수 있습니다. 현재 단계에서는 다음 구성이 가장 단순합니다.
 
 ```text
 GitHub Pages (React)
-  ├─ Firebase Anonymous Auth
-  ├─ Firebase App Check
-  └─ HTTPS Callable Functions
-       ├─ Firestore transaction
-       ├─ quota / cooldown / moderation
-       ├─ random bottle reservation
-       ├─ report / ban audit
-       └─ OpenAI provider (server secret only)
+  └─ Supabase
+      ├─ Anonymous Auth (추후 Google/Apple 계정 연결)
+      ├─ PostgreSQL
+      │   ├─ public.users
+      │   └─ public.messages
+      └─ RPC + RLS (발송, 배정, 열기, 처리)
 ```
 
-Cloud Functions 배포에는 Firebase Blaze 요금제와 결제 계정 연결이 필요합니다. Firebase 프로젝트 ID, 웹 앱 설정, App Check site key가 준비되기 전에는 운영 모드를 활성화하지 않습니다.
+Firebase도 무료 쿼터와 정적 웹 지원이 좋아 빠른 MVP에 적합합니다. 다만 이 서비스는 발신 UID를 숨긴 채 메시지를 원자적으로 배정하고, 향후 관리자 통계와 Docker 이전을 고려해야 합니다. PostgreSQL 함수, 트랜잭션, RLS를 그대로 쓸 수 있는 Supabase가 현재 요구에 더 잘 맞습니다.
 
-## 외부 스키마
+## 테이블
 
-클라이언트가 보는 계약은 `OceanGateway`입니다.
+### public.users
 
-- `getSnapshot()`
-- `sendBottle(draft)`
-- `catchBottle()`
-- `openBottle(id)`
-- `resolveBottle(id, redrift | keep | discard | report)`
-- `updateSea(seaId)`
+Supabase Auth의 `auth.users.id`와 같은 UUID를 기본 키로 사용합니다. 바다, 언어, 상태, 일일 발송량, 다음 수신 시각, 현재 잡은 메시지 ID를 저장합니다. 로그인 제공자와 토큰은 이 테이블이 아니라 Supabase Auth가 관리합니다.
 
-클라이언트는 후보 병 목록, 작성자 UID, 신고 수, 재표류 이력을 직접 읽지 않습니다.
+### public.messages
 
-## 개념 스키마
+본문, 서명, 바다, 작성자 UID와 함께 표류·예약·보관·격리 상태를 저장합니다. 수신자와 예약 만료 시각도 같은 행에 두어 현재는 두 테이블만으로 동작합니다.
 
-### users/{uid}
+브라우저에는 두 테이블의 직접 읽기·쓰기 권한이 없습니다. `ocean_*` DB 함수만 `authenticated` 역할에 공개하며, 함수가 `auth.uid()`와 행 잠금을 확인합니다. 따라서 일반 사용자가 API 요청을 조작해도 다른 사용자의 UID나 미개봉 본문을 직접 조회할 수 없습니다.
 
-| 필드 | 형식 | 설명 |
-|---|---|---|
-| seaId | enum | 수신 바다 |
-| nextCatchAt | timestamp | 다음 건지기 시각 |
-| dailySendDate | YYYY-MM-DD | 일일 쿼터 기준일 |
-| dailySendCount | integer | 0~2 |
-| activeBottleId | nullable id | 현재 예약된 한 병 |
-| status | active / suspended / banned | 이용 상태 |
+## 설치
 
-### bottles/{bottleId}
+1. Supabase에서 프로젝트를 만듭니다.
+2. Authentication 설정에서 Anonymous Sign-Ins를 활성화합니다.
+3. SQL Editor에서 [`202607140001_initial_ocean.sql`](../supabase/migrations/202607140001_initial_ocean.sql)을 실행합니다. Supabase CLI를 사용한다면 `supabase db push`로 적용해도 됩니다.
+4. `.env.example`을 `.env.local`로 복사하고 Project URL과 publishable key를 입력합니다.
+5. `npm run check`와 `npm run dev`로 확인합니다.
 
-| 필드 | 형식 | 설명 |
-|---|---|---|
-| body | string | 10~1,000자 본문 |
-| signature | nullable string | 20자 이하 서명 |
-| dateLabel | nullable string | 작성자가 선택한 날짜 |
-| seaId | enum | 띄운 바다 |
-| status | drifting / reserved / kept / quarantined | 현재 상태 |
-| availableAt | timestamp | 배정 가능 시각 |
-| reservedTo | nullable uid | 현재 수신자 |
-| reservedUntil | nullable timestamp | 24시간 예약 만료 |
-| driftCount | integer | 서버 전용 재표류 횟수 |
-| expiresAt | nullable timestamp | 보관 만료 시각 |
+환경변수가 없으면 앱은 기존 로컬 데모로 자동 실행됩니다. `service_role` 키와 DB 비밀번호는 브라우저, `.env`, GitHub Pages 빌드에 절대 넣지 않습니다. 클라이언트에는 publishable key만 사용합니다.
 
-### bottlePrivateMeta/{bottleId}
+GitHub Pages 운영 빌드에는 저장소의 Actions secrets에 아래 값을 등록합니다.
 
-| 필드 | 형식 | 설명 |
-|---|---|---|
-| authorUid | uid | 신고 제재를 위한 작성자 |
-| reportCount | integer | 고유 신고자 기준 누적 |
-| moderation | object | provider·정책 버전·결과 |
-| createdAt | timestamp | 감사 기준 시각 |
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_PUBLISHABLE_KEY`
 
-### reports/{reportId}
+## 현재 두 테이블 설계의 범위
 
-`bottleId`, `reporterUid`, `authorUid`, `reason`, `createdAt`, `reviewStatus`를 저장합니다. `(bottleId, reporterUid)`는 논리적으로 유일해야 합니다.
+신고 시 메시지를 즉시 `quarantined`로 바꾸고 `report_count`를 올릴 수 있지만, 신고 사유·신고자별 중복 방지·처리 이력은 보존하지 않습니다. 관리자 신고 검토를 구현할 때는 `reports`와 `admin_audit_logs`를 별도 테이블로 추가하는 것이 맞습니다. 번역 캐시나 AI 검사 결과도 운영 시 별도 비공개 테이블로 분리하는 편이 안전합니다.
 
-## 내부 스키마와 인덱스
+익명 로그인은 브라우저 데이터를 지우면 계정을 복구할 수 없고 제재 우회가 쉽습니다. 공개 범위를 넓히기 전 CAPTCHA/Turnstile을 켜고, Google 또는 Apple 계정 연결을 추가해야 합니다.
 
-- `bottles`: `(seaId, status, availableAt)` 복합 인덱스
-- `bottles`: `(reservedTo, status)` 복합 인덱스
-- `bottles`: `(reservedTo, expiresAt)` 복합 인덱스
-- `reports`: `(authorUid, createdAt)` 복합 인덱스
-- `users`: 문서 ID를 Firebase Auth UID로 사용
+## 비용과 이전성
 
-병 본문과 비공개 메타데이터는 클라이언트 Firestore 읽기·쓰기를 전부 거부합니다. Callable Function의 Admin SDK만 접근합니다. Firestore Rules는 필터가 아니며 문서의 특정 필드만 숨길 수도 없기 때문입니다.
+2026-07-14 기준 Supabase Free는 PostgreSQL 500MB, 월간 활성 사용자 50,000명, egress 5GB를 포함하며 1주 비활성 프로젝트는 일시 중지됩니다. 관리형 서비스에서 시작한 뒤 SQL dump를 PostgreSQL 또는 Docker 기반 self-hosted Supabase로 복원할 수 있습니다. self-hosting 이후에는 서버 보안, 백업, 모니터링을 직접 책임져야 합니다.
 
-## 트랜잭션과 일관성
-
-핵심 작업은 한 Callable Function 요청 안에서 하나의 Firestore transaction으로 처리합니다.
-
-- 병 건지기: 사용자 쿨다운 확인 → 후보 선택 → 병 예약 → 사용자 activeBottle 갱신
-- 발송: 정지·쿼터 확인 → 사전 검사 성공 → 병과 private meta 생성 → 쿼터 증가
-- 처리: 소유 예약 확인 → 병 상태 변경 → activeBottle 해제
-- 신고: 고유 신고 생성 → 병 격리 → 작성자 누적과 상태 갱신
-
-Firestore transaction의 ACID 범위 안에서 한 병이 두 명에게 동시에 배정되지 않도록 합니다. 후보 조회의 무작위성은 완전 균등보다 오래 기다린 병과 재표류 병을 우선하는 가중 선택을 사용합니다. 여러 지역의 읽기 복제본에는 짧은 지연이 있을 수 있지만, 상태 변경은 서버 transaction 결과를 기준으로 합니다.
-
-## 만료
-
-UI와 읽기 함수는 `expiresAt <= now`인 병을 즉시 숨깁니다. Firestore TTL은 물리 정리용이며 삭제가 최대 약 24시간 늦을 수 있으므로 제품 의미의 만료 판단에 사용하지 않습니다.
-
-## AI provider
-
-```ts
-interface SafetyProvider {
-  check(body: string, signature?: string): Promise<SafetyResult>;
-}
-
-interface TranslationProvider {
-  translate(text: string, targetLanguage: string): Promise<string>;
-}
-```
-
-권장 운영 순서:
-
-1. 결정론적 필터로 전화번호, 이메일, URL, SNS ID, 반복 스팸을 차단
-2. 무료 `omni-moderation-latest`로 유해성 범주 분류
-3. 필요할 때만 `gpt-5-nano` Structured Outputs로 서비스 고유 정책을 2차 판정
-4. 번역 요청도 `gpt-5-nano`를 사용하되 언어별 품질 평가 후 노출
-
-OpenAI 키는 Firebase Secret Manager에만 저장합니다. 검사 provider 장애 시에는 fail-closed로 발송을 중단하며 쿼터를 차감하지 않습니다.
-
-## 용량 초안
-
-초기 1,000 DAU, 사용자당 하루 평균 발송 0.5병·수신 1병을 가정하면 하루 신규 병 500개, 병 상태 변경 약 2,000~3,000 writes, snapshot·건지기·보관함 합계 약 5,000~10,000 reads 규모입니다. 실제 공개 전에는 payload 크기, 신고 보존 기간, Functions 호출·AI 토큰 비용을 부하 시험으로 다시 산정합니다.
-
-## 결정 기록
-
-- Pages 단독 저장소는 공용 서비스 요구를 충족하지 못하므로 데모에만 사용한다.
-- 익명 Auth는 UX에는 맞지만 브라우저 초기화로 제재를 우회할 수 있어 공개판에서는 비공개 계정 연결 또는 기기 신뢰 정책을 추가 검토한다.
-- 보낸 기록은 사용자에게 노출하지 않되, 신고 제재를 위해 작성자 UID는 private meta로 보존한다.
-- 모든 UGC 사전 검사가 준비되기 전에는 데모 시드 외의 글을 다른 사용자에게 전달하지 않는다.
+Firebase Firestore도 저장 1GiB, 일 50,000 reads와 20,000 writes의 무료 쿼터가 있습니다. 다만 안전한 서버 함수 배포는 Blaze 종량제로 운영해야 하며, Firestore 문서 모델에서 PostgreSQL로 옮길 때 데이터·쿼리 계층을 다시 설계해야 합니다.
 
 ## 공식 참고자료
 
-- [GitHub Pages 개요](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages)
-- [Firebase Anonymous Auth](https://firebase.google.com/docs/auth/web/anonymous-auth)
-- [Firebase Callable Functions](https://firebase.google.com/docs/functions/callable)
-- [Firestore transactions](https://firebase.google.com/docs/firestore/manage-data/transactions)
-- [Firestore security](https://firebase.google.com/docs/firestore/security/overview)
-- [OpenAI Moderation](https://developers.openai.com/api/docs/guides/moderation)
-- [OpenAI API key safety](https://help.openai.com/en/articles/5112595-best-practices-for-api-key-safety)
+- [Supabase 요금](https://supabase.com/pricing)
+- [Supabase 익명 로그인](https://supabase.com/docs/guides/auth/auth-anonymous)
+- [Supabase RLS](https://supabase.com/docs/guides/database/postgres/row-level-security)
+- [Supabase Docker self-hosting](https://supabase.com/docs/guides/self-hosting)
+- [Firebase Firestore 요금](https://firebase.google.com/docs/firestore/pricing)
+- [Firebase Cloud Functions 할당량과 Blaze 요금제](https://firebase.google.com/docs/functions/quotas)

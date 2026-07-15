@@ -17,7 +17,7 @@
 - 모션 줄이기, 키보드 포커스, 스크린리더 상태 안내
 - GitHub Actions 기반 GitHub Pages 자동 배포
 
-현재 공개 페이지는 **안전한 로컬 체험판**입니다. GitHub Pages에는 서버와 공유 데이터베이스가 없으므로, 띄운 편지는 저장하거나 다른 사용자에게 전달하지 않고 검수된 샘플 편지만 수신합니다. 실제 사용자 간 전달을 위한 Firebase 설계는 [운영 백엔드 설계](docs/production-backend.md)에 정리되어 있습니다.
+환경변수가 없는 공개 페이지는 **안전한 로컬 체험판**입니다. GitHub Pages 자체에는 서버와 공유 데이터베이스가 없으므로, 띄운 편지는 저장하거나 다른 사용자에게 전달하지 않고 검수된 샘플 편지만 수신합니다. Supabase 환경변수를 설정하면 PostgreSQL 운영 게이트웨이로 전환됩니다. 설치 방법과 보안 경계는 [운영 데이터베이스 설계](docs/production-backend.md)에 정리되어 있습니다.
 
 ## 로컬 실행
 
@@ -49,7 +49,7 @@ src/
 └── styles/                      # 반응형 디자인 시스템
 ```
 
-`OceanGateway`, `SafetyProvider`, `TranslationProvider`가 외부 서비스 경계입니다. 현재는 `DemoOceanGateway`와 보수적 로컬 검사를 사용하며, 운영판에서는 같은 계약 뒤에 Firebase Callable Functions와 OpenAI provider를 연결합니다.
+`OceanGateway`, `SafetyProvider`, `TranslationProvider`가 외부 서비스 경계입니다. 기본값은 `DemoOceanGateway`와 보수적 로컬 검사이며, 운영 환경에서는 같은 계약 뒤에 Supabase PostgreSQL RPC와 OpenAI provider를 연결합니다.
 
 ## AI 연결 판단
 

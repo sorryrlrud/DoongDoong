@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 interface AppShellProps {
+  isDemo: boolean;
   resettingDemo: boolean;
   controlsLocked: boolean;
   onHome: () => void;
@@ -9,6 +10,7 @@ interface AppShellProps {
 }
 
 export function AppShell({
+  isDemo,
   resettingDemo,
   controlsLocked,
   onHome,
@@ -30,15 +32,17 @@ export function AppShell({
       >
         둥둥
       </button>
-      <button
-        className="demo-reset"
-        type="button"
-        onClick={() => void onDemoReset()}
-        disabled={resettingDemo || controlsLocked}
-        aria-label="데모를 초기화하고 첫 화면으로 이동"
-      >
-        {resettingDemo ? "RESET…" : "DEMO ↻"}
-      </button>
+      {isDemo ? (
+        <button
+          className="demo-reset"
+          type="button"
+          onClick={() => void onDemoReset()}
+          disabled={resettingDemo || controlsLocked}
+          aria-label="데모를 초기화하고 첫 화면으로 이동"
+        >
+          {resettingDemo ? "RESET…" : "DEMO ↻"}
+        </button>
+      ) : null}
 
       <main id="main-content" className="main-content">
         {children}

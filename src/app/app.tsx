@@ -35,7 +35,7 @@ export function App() {
     oceanGateway
       .getSnapshot()
       .then(setSnapshot)
-      .catch(() => setLoadError("이 브라우저에서는 데모 데이터를 준비할 수 없어요."));
+      .catch(() => setLoadError("바다 데이터를 준비할 수 없어요. 잠시 후 다시 시도해 주세요."));
   }, []);
 
   useEffect(() => {
@@ -206,6 +206,7 @@ export function App() {
 
   return (
     <AppShell
+      isDemo={snapshot.isDemo}
       resettingDemo={resettingDemo}
       controlsLocked={sceneBusy || catching}
       onHome={() => navigate("home")}
