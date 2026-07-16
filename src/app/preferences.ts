@@ -10,6 +10,15 @@ const DEFAULT_PREFERENCES: AppPreferences = {
   reduceMotion: false,
 };
 
+export const resetPreferences = (): AppPreferences => {
+  try {
+    window.localStorage.removeItem(PREFERENCES_KEY);
+  } catch {
+    // The in-memory default remains usable when storage is blocked.
+  }
+  return DEFAULT_PREFERENCES;
+};
+
 export const loadPreferences = (): AppPreferences => {
   try {
     const raw = window.localStorage.getItem(PREFERENCES_KEY);

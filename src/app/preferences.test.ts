@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { loadPreferences, savePreferences } from "@/app/preferences";
+import { loadPreferences, resetPreferences, savePreferences } from "@/app/preferences";
 
 class MemoryStorage {
   private readonly values = new Map<string, string>();
@@ -26,9 +26,11 @@ describe("preferences", () => {
     vi.unstubAllGlobals();
   });
 
-  it("stores onboarding and motion settings", () => {
+  it("resets onboarding and motion settings for the tutorial", () => {
     savePreferences({ onboarded: true, reduceMotion: true });
 
     expect(loadPreferences()).toEqual({ onboarded: true, reduceMotion: true });
+    expect(resetPreferences()).toEqual({ onboarded: false, reduceMotion: false });
+    expect(loadPreferences()).toEqual({ onboarded: false, reduceMotion: false });
   });
 });

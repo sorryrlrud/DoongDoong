@@ -3,6 +3,7 @@ import { AppShell } from "@/app/app-shell";
 import { AdminScreen } from "@/features/admin/components/admin-screen";
 import {
   loadPreferences,
+  resetPreferences,
   savePreferences,
   type AppPreferences,
 } from "@/app/preferences";
@@ -78,6 +79,12 @@ export function App() {
   const updatePreferences = (next: AppPreferences) => {
     setPreferences(next);
     savePreferences(next);
+  };
+
+  const replayTutorial = () => {
+    if (sceneBusy || catching) return;
+    setPreferences(resetPreferences());
+    navigate("home");
   };
 
   const catchFromHome = async () => {
@@ -197,6 +204,7 @@ export function App() {
     <AppShell
       controlsLocked={sceneBusy || catching}
       onHome={() => navigate("home")}
+      onReplayTutorial={replayTutorial}
     >
       {content}
     </AppShell>
