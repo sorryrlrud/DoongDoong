@@ -3,6 +3,7 @@ import type { OceanSnapshot } from "@/features/ocean/types/ocean";
 import {
   ARRIVED_BOTTLE_IMAGE,
   BEACH_IMAGE,
+  CRAB_IMAGE,
   EMPTY_BOTTLE_IMAGE,
   GUIDE_SIGN_IMAGE,
   KEEPSAKE_IMAGE,
@@ -38,7 +39,12 @@ export function HomeScreen({ snapshot, catching, onNavigate, onCatch, onSeagull 
           <img src={WRITING_SET_IMAGE} alt="" />
           <img className="scene-object__empty-bottle" src={EMPTY_BOTTLE_IMAGE} alt="" />
         </button>
-      ) : null}
+      ) : (
+        <div className="writing-rest" role="status">
+          <span>다음 편지지와 병을 준비하는 중 …</span>
+          <img className="writing-rest__crab" src={CRAB_IMAGE} alt="" />
+        </div>
+      )}
 
       {snapshot.bottleAvailable ? (
         <button

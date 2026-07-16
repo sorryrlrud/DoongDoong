@@ -44,6 +44,22 @@ describe("sea experience", () => {
     expect(html).toContain("waiting-news__gull");
   });
 
+  it("replaces the writing set with a crab after today's letters are used", () => {
+    const html = renderToStaticMarkup(
+      <HomeScreen
+        snapshot={{ ...waitingSnapshot, remainingSends: 0 }}
+        catching={false}
+        onNavigate={() => undefined}
+        onCatch={async () => undefined}
+        onSeagull={() => undefined}
+      />,
+    );
+
+    expect(html).toContain("다음 편지지와 병을 준비하는 중 …");
+    expect(html).toContain("doongdoong-crab.png");
+    expect(html).not.toContain("doongdoong-writing-set.png");
+  });
+
   it("shows the sender's country after a bottle is opened", () => {
     const html = renderToStaticMarkup(
       <CatchScreen
