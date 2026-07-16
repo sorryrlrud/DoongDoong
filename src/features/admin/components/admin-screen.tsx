@@ -316,12 +316,13 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
             </div>
             <div className="admin-table-wrap">
               <table className="admin-table">
-                <thead><tr><th>UID</th><th>상태</th><th>바다</th><th>발송</th><th>작성 메시지</th><th>가입일</th><th>관리</th></tr></thead>
+                <thead><tr><th>UID</th><th>상태</th><th>국가</th><th>바다</th><th>발송</th><th>작성 메시지</th><th>가입일</th><th>관리</th></tr></thead>
                 <tbody>
                   {dashboard.users.map((user) => (
                     <tr key={user.id}>
                       <td><code>{user.id}</code>{user.role === "admin" ? <small>ADMIN</small> : null}</td>
                       <td>{user.status}</td>
+                      <td>{user.countryCode ?? "-"}</td>
                       <td>{user.seaId}</td>
                       <td>{user.dailySendCount}/2</td>
                       <td>{user.authoredMessageCount}</td>
@@ -368,7 +369,7 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
                       </td>
                     </tr>
                   ))}
-                  {dashboard.users.length === 0 ? <tr><td colSpan={7}>조건에 맞는 사용자가 없습니다.</td></tr> : null}
+                  {dashboard.users.length === 0 ? <tr><td colSpan={8}>조건에 맞는 사용자가 없습니다.</td></tr> : null}
                 </tbody>
               </table>
             </div>
