@@ -2344,8 +2344,8 @@ h3,
 .writing-rest {
   position: absolute;
   z-index: 2;
-  bottom: clamp(12px, 3vh, 42px);
-  left: clamp(28px, 8vw, 130px);
+  bottom: clamp(28px, 5vh, 62px);
+  left: clamp(42px, 9vw, 150px);
   display: flex;
   width: clamp(100px, 12vw, 170px);
   align-items: center;
@@ -3245,8 +3245,8 @@ h3,
   }
 
   .writing-rest {
-    bottom: calc(2px + env(safe-area-inset-bottom));
-    left: 3px;
+    bottom: calc(48px + env(safe-area-inset-bottom));
+    left: 24px;
     width: clamp(90px, 30vw, 120px);
   }
 
