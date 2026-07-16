@@ -19,6 +19,22 @@ const formatDate = (value: string): string =>
     timeStyle: "short",
   }).format(new Date(value));
 
+const formatReceiveCooldown = (nextCatchAt: string | null, now: number): string => {
+  if (!nextCatchAt) return "수신 가능";
+
+  const remainingMilliseconds = new Date(nextCatchAt).getTime() - now;
+  if (!Number.isFinite(remainingMilliseconds) || remainingMilliseconds <= 0) return "수신 가능";
+
+  const remainingMinutes = Math.ceil(remainingMilliseconds / 60_000);
+  const days = Math.floor(remainingMinutes / (24 * 60));
+  const hours = Math.floor((remainingMinutes % (24 * 60)) / 60);
+  const minutes = remainingMinutes % 60;
+
+  if (days > 0) return `${days}일 ${hours}시간 남음`;
+  if (hours > 0) return `${hours}시간 ${minutes}분 남음`;
+  return `${minutes}분 남음`;
+};
+
 const isPermissionError = (message: string): boolean =>
   message.includes("ADMIN_REQUIRED") || message.includes("관리자 권한");
 
@@ -55,6 +71,7 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
   const [linkingGitHub, setLinkingGitHub] = useState(false);
   const [actionKey, setActionKey] = useState<string | null>(null);
   const [actionFeedback, setActionFeedback] = useState<ActionFeedback | null>(null);
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
 
   const loadDashboard = useCallback(async (
     nextQuery: string,
@@ -108,6 +125,11 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
       active = false;
     };
   }, [gateway, loadDashboard]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setCurrentTime(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const submitSearch = (event: FormEvent) => {
     event.preventDefault();
@@ -316,7 +338,7 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
             </div>
             <div className="admin-table-wrap">
               <table className="admin-table">
-                <thead><tr><th>UID</th><th>상태</th><th>국가</th><th>바다</th><th>발송</th><th>작성 메시지</th><th>가입일</th><th>관리</th></tr></thead>
+                <thead><tr><th>UID</th><th>상태</th><th>국가</th><th>바다</th><th>발송</th><th>수신 가능 쿨타임</th><th>작성 메시지</th><th>가입일</th><th>관리</th></tr></thead>
                 <tbody>
                   {dashboard.users.map((user) => (
                     <tr key={user.id}>
@@ -325,6 +347,9 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
                       <td>{user.countryCode ?? "-"}</td>
                       <td>{user.seaId}</td>
                       <td>{user.dailySendCount}/2</td>
+                      <td title={user.nextCatchAt ? formatDate(user.nextCatchAt) : undefined}>
+                        {formatReceiveCooldown(user.nextCatchAt, currentTime)}
+                      </td>
                       <td>{user.authoredMessageCount}</td>
                       <td>{formatDate(user.createdAt)}</td>
                       <td>
@@ -369,7 +394,7 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
                       </td>
                     </tr>
                   ))}
-                  {dashboard.users.length === 0 ? <tr><td colSpan={8}>조건에 맞는 사용자가 없습니다.</td></tr> : null}
+                  {dashboard.users.length === 0 ? <tr><td colSpan={9}>조건에 맞는 사용자가 없습니다.</td></tr> : null}
                 </tbody>
               </table>
             </div>
