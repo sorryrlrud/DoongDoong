@@ -72,4 +72,12 @@ export class SupabaseAdminGateway implements AdminGateway {
     });
     if (error) throw error;
   }
+
+  async deleteMessage(messageId: string): Promise<void> {
+    await ensureSupabaseSession(this.client);
+    const { error } = await this.client.rpc("admin_delete_message", {
+      p_message_id: messageId,
+    });
+    if (error) throw error;
+  }
 }

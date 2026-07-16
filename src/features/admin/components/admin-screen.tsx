@@ -79,6 +79,15 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
     }
   }, [gateway]);
 
+  const refreshDashboard = useCallback(async (
+    nextQuery: string,
+    nextStatus: AdminMessageStatus,
+  ) => {
+    if (!gateway) throw new Error("관리자 페이지는 Supabase 운영 환경에서만 사용할 수 있습니다.");
+    const result = await gateway.getDashboard({ query: nextQuery, status: nextStatus });
+    setDashboard(result);
+  }, [gateway]);
+
   useEffect(() => {
     let active = true;
 
@@ -127,7 +136,10 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
     setActionFeedback(null);
     try {
       await action();
-      await loadDashboard(query, status);
+      // Keep the current table mounted while refreshing after a row action.
+      // Reusing loadDashboard here used to toggle the page-level loading state,
+      // which made adjacent controls flicker or disappear during a reset.
+      await refreshDashboard(query, status);
       setActionFeedback({ kind: "success", message: successMessage });
     } catch (caught) {
       setActionFeedback({ kind: "error", message: getErrorMessage(caught) });
@@ -154,12 +166,12 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
 
   const deleteUser = (userId: string) => {
     if (!gateway || !window.confirm(
-      `사용자 ${userId} 계정을 삭제할까요? 작성 메시지는 상태와 함께 데이터베이스에 보존됩니다.`,
+      `사용자 ${userId}와 관련된 모든 메시지를 데이터베이스에서 완전히 삭제할까요? 이 작업은 되돌릴 수 없습니다.`,
     )) return;
     void runAction(
       `delete-${userId}`,
       () => gateway.deleteUser(userId),
-      "사용자 계정을 삭제했습니다. 작성 메시지는 보존되었습니다.",
+      "사용자와 관련 메시지를 완전히 삭제했습니다.",
     );
   };
 
@@ -169,6 +181,17 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
       `available-${messageId}`,
       () => gateway.makeMessageAvailable(messageId),
       "메시지를 지금 도달 가능한 상태로 변경했습니다.",
+    );
+  };
+
+  const deleteMessage = (messageId: string) => {
+    if (!gateway || !window.confirm(
+      `메시지 ${messageId}를 데이터베이스에서 완전히 삭제할까요? 이 작업은 되돌릴 수 없습니다.`,
+    )) return;
+    void runAction(
+      `delete-message-${messageId}`,
+      () => gateway.deleteMessage(messageId),
+      "메시지를 완전히 삭제했습니다.",
     );
   };
 
@@ -296,7 +319,7 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
                 <thead><tr><th>UID</th><th>상태</th><th>바다</th><th>발송</th><th>작성 메시지</th><th>가입일</th><th>관리</th></tr></thead>
                 <tbody>
                   {dashboard.users.map((user) => (
-                    <tr key={user.id}>
+                    <tr className={actionKey?.endsWith(user.id) ? "admin-row--busy" : undefined} key={user.id}>
                       <td><code>{user.id}</code>{user.role === "admin" ? <small>ADMIN</small> : null}</td>
                       <td>{user.status}</td>
                       <td>{user.seaId}</td>
@@ -309,6 +332,7 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
                             className="button button--ghost button--tiny"
                             type="button"
                             disabled={Boolean(actionKey) || user.status === "deleted"}
+                            aria-busy={actionKey === `reset-send-${user.id}`}
                             onClick={() => resetUser(user.id, "send")}
                           >
                             발신 초기화
@@ -317,6 +341,7 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
                             className="button button--ghost button--tiny"
                             type="button"
                             disabled={Boolean(actionKey) || user.status === "deleted"}
+                            aria-busy={actionKey === `reset-receive-${user.id}`}
                             onClick={() => resetUser(user.id, "receive")}
                           >
                             수신 초기화
@@ -326,13 +351,13 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
                             type="button"
                             disabled={
                               Boolean(actionKey)
-                              || user.status === "deleted"
                               || user.role === "admin"
                               || user.id === authInfo?.userId
                             }
+                            aria-busy={actionKey === `delete-${user.id}`}
                             onClick={() => deleteUser(user.id)}
                           >
-                            사용자 삭제
+                            완전 삭제
                           </button>
                         </div>
                       </td>
@@ -371,18 +396,28 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
                       <div><dt>다음 도착 가능</dt><dd>{formatDate(message.availableAt)}</dd></div>
                     ) : null}
                   </dl>
-                  {message.status === "drifting" ? (
-                    <div className="admin-message__actions">
+                  <div className="admin-message__actions">
+                    {message.status === "drifting" ? (
                       <button
                         className="button button--primary button--small"
                         type="button"
                         disabled={Boolean(actionKey)}
+                        aria-busy={actionKey === `available-${message.id}`}
                         onClick={() => makeMessageAvailable(message.id)}
                       >
                         지금 도달 가능하게
                       </button>
-                    </div>
-                  ) : null}
+                    ) : null}
+                    <button
+                      className="button button--danger button--small"
+                      type="button"
+                      disabled={Boolean(actionKey)}
+                      aria-busy={actionKey === `delete-message-${message.id}`}
+                      onClick={() => deleteMessage(message.id)}
+                    >
+                      메시지 완전 삭제
+                    </button>
+                  </div>
                 </article>
               ))}
               {dashboard.messages.length === 0 ? <p className="admin-empty">조건에 맞는 메시지가 없습니다.</p> : null}

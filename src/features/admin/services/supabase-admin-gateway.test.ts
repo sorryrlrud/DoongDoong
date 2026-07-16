@@ -39,7 +39,7 @@ describe("SupabaseAdminGateway", () => {
     });
   });
 
-  it("calls the user deletion RPC", async () => {
+  it("calls the permanent user deletion RPC", async () => {
     const { client, rpc } = createClient();
     const gateway = new SupabaseAdminGateway(client as never);
 
@@ -47,6 +47,17 @@ describe("SupabaseAdminGateway", () => {
 
     expect(rpc).toHaveBeenCalledWith("admin_delete_user", {
       p_target_user_id: "user-id",
+    });
+  });
+
+  it("calls the permanent message deletion RPC", async () => {
+    const { client, rpc } = createClient();
+    const gateway = new SupabaseAdminGateway(client as never);
+
+    await gateway.deleteMessage("message-id");
+
+    expect(rpc).toHaveBeenCalledWith("admin_delete_message", {
+      p_message_id: "message-id",
     });
   });
 });

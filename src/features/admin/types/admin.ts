@@ -73,4 +73,5 @@ export interface AdminGateway {
   resetUserLimits(userId: string, direction: AdminResetDirection): Promise<void>;
   makeMessageAvailable(messageId: string): Promise<void>;
   deleteUser(userId: string): Promise<void>;
+  deleteMessage(messageId: string): Promise<void>;
 }
