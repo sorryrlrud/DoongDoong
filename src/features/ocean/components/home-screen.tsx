@@ -1,8 +1,8 @@
 import type { AppRoute } from "@/app/use-hash-route";
 import type { OceanSnapshot } from "@/features/ocean/types/ocean";
 import {
+  ARRIVED_BOTTLE_IMAGE,
   BEACH_IMAGE,
-  BOTTLE_WITH_LETTER_IMAGE,
   EMPTY_BOTTLE_IMAGE,
   GUIDE_SIGN_IMAGE,
   KEEPSAKE_IMAGE,
@@ -48,7 +48,7 @@ export function HomeScreen({ snapshot, catching, onNavigate, onCatch }: HomeScre
           aria-label={snapshot.activeBottle ? "건져 둔 병 보기" : "물가의 병 줍기"}
           aria-busy={catching}
         >
-          <img src={BOTTLE_WITH_LETTER_IMAGE} alt="" />
+          <img src={ARRIVED_BOTTLE_IMAGE} alt="" />
         </button>
       ) : null}
 

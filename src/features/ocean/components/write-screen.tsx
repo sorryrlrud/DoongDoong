@@ -35,6 +35,7 @@ export function WriteScreen({
   const [seaId, setSeaId] = useState<SeaId>(snapshot.seaId);
   const [stage, setStage] = useState<WriteStage>("editing");
   const [checking, setChecking] = useState(false);
+  const [confirmingSend, setConfirmingSend] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showCrisisHelp, setShowCrisisHelp] = useState(false);
   const sendingRef = useRef(false);
@@ -109,6 +110,16 @@ export function WriteScreen({
     }
   };
 
+  const requestSendConfirmation = () => {
+    if (!canSend || checking || stage !== "editing") {
+      setError(DRAFT_LENGTH_ERROR);
+      return;
+    }
+
+    setError(null);
+    setConfirmingSend(true);
+  };
+
   if (snapshot.remainingSends === 0 && stage === "editing") {
     return (
       <section className="shore-scene">
@@ -157,7 +168,7 @@ export function WriteScreen({
         aria-label="병에 담을 편지"
         onSubmit={(event) => {
           event.preventDefault();
-          void packAndLaunch();
+          requestSendConfirmation();
         }}
       >
         <label className="sr-only" htmlFor="bottle-body">
@@ -233,6 +244,44 @@ export function WriteScreen({
       <p className="sr-only" aria-live="polite">
         {stage === "packing" ? "편지를 병에 담고 있어요." : ""}
       </p>
+
+      {confirmingSend ? (
+        <div
+          className="send-dialog-layer"
+          role="presentation"
+          onKeyDown={(event) => {
+            if (event.key === "Escape") setConfirmingSend(false);
+          }}
+        >
+          <section
+            className="send-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="send-dialog-title"
+            aria-describedby="send-dialog-description"
+          >
+            <div className="send-dialog__body">
+              <h2 id="send-dialog-title">이 병을 띄울까요?</h2>
+              <p id="send-dialog-description">띄워보낸 병은 수정할 수 없어요. 보낼까요?</p>
+              <div className="send-dialog__actions">
+                <button className="button button--ghost" type="button" onClick={() => setConfirmingSend(false)} autoFocus>
+                  취소
+                </button>
+                <button
+                  className="button button--primary"
+                  type="button"
+                  onClick={() => {
+                    setConfirmingSend(false);
+                    void packAndLaunch();
+                  }}
+                >
+                  보내기
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </section>
   );
 }

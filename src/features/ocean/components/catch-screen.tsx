@@ -3,7 +3,7 @@ import type { AppRoute } from "@/app/use-hash-route";
 import { oceanGateway } from "@/features/ocean/services/runtime";
 import { countryName } from "@/features/ocean/countries";
 import type { BottleResolution, OceanSnapshot } from "@/features/ocean/types/ocean";
-import { BEACH_IMAGE, BOTTLE_WITH_LETTER_IMAGE } from "@/shared/brand";
+import { ARRIVED_BOTTLE_IMAGE, BEACH_IMAGE, BOTTLE_WITH_LETTER_IMAGE } from "@/shared/brand";
 import { PageHeading } from "@/shared/page-heading";
 
 interface CatchScreenProps {
@@ -105,7 +105,7 @@ export function CatchScreen({
           aria-label="병을 열어 편지 꺼내기"
           aria-busy={opening}
         >
-          <img src={BOTTLE_WITH_LETTER_IMAGE} alt="" />
+          <img src={ARRIVED_BOTTLE_IMAGE} alt="" />
         </button>
 
         <button

@@ -2,6 +2,7 @@ export const HERO_IMAGE = `${import.meta.env.BASE_URL}assets/doongdoong-ocean-he
 export const BEACH_IMAGE = `${import.meta.env.BASE_URL}assets/doongdoong-beach-empty.jpg`;
 export const WRITING_SET_IMAGE = `${import.meta.env.BASE_URL}assets/doongdoong-writing-set.png`;
 export const BOTTLE_WITH_LETTER_IMAGE = `${import.meta.env.BASE_URL}assets/doongdoong-bottle-letter.png`;
+export const ARRIVED_BOTTLE_IMAGE = `${import.meta.env.BASE_URL}assets/doongdoong-bottle-arrived.png`;
 export const EMPTY_BOTTLE_IMAGE = `${import.meta.env.BASE_URL}assets/doongdoong-bottle-empty.png`;
 export const KEEPSAKE_IMAGE = `${import.meta.env.BASE_URL}assets/doongdoong-keepsake.png`;
 export const GUIDE_SIGN_IMAGE = `${import.meta.env.BASE_URL}assets/doongdoong-guide-sign.png`;

@@ -1,5 +1,5 @@
-const CACHE_NAME = "doongdoong-v1";
-const APP_SHELL = ["./manifest.webmanifest", "./icon.svg"];
+const CACHE_NAME = "doongdoong-v2";
+const APP_SHELL = ["./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 const cacheAppShell = async () => {
   const cache = await caches.open(CACHE_NAME);
