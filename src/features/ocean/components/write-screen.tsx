@@ -5,6 +5,7 @@ import { SEA_OPTIONS, type OceanSnapshot, type SeaId } from "@/features/ocean/ty
 import { BEACH_IMAGE, BOTTLE_WITH_LETTER_IMAGE, EMPTY_BOTTLE_IMAGE } from "@/shared/brand";
 import { PageHeading } from "@/shared/page-heading";
 import { DRAFT_LENGTH_ERROR, hasValidDraft } from "@/features/ocean/utils/write-validation";
+import { playSplash } from "@/features/ocean/services/ocean-audio";
 
 interface WriteScreenProps {
   snapshot: OceanSnapshot;
@@ -93,6 +94,7 @@ export function WriteScreen({
         seaId,
       });
 
+      playSplash();
       onSnapshot(nextSnapshot);
       await packingDelay;
       setStage("launching");

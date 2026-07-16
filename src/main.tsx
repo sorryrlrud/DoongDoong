@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "@/app/app";
+import { OceanSoundscape } from "@/features/ocean/components/ocean-soundscape";
 import "@/styles/globals.css";
 
 if ("serviceWorker" in navigator) {
@@ -13,6 +14,7 @@ if ("serviceWorker" in navigator) {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
+    <OceanSoundscape />
     <App />
   </StrictMode>,
 );

@@ -2365,15 +2365,25 @@ h3,
 }
 
 .waiting-news {
+  appearance: none;
   position: absolute;
   z-index: 3;
   top: clamp(118px, 17vh, 204px);
   left: clamp(20px, 13vw, 210px);
   display: grid;
   justify-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: rgba(23, 63, 84, 0.78);
-  pointer-events: none;
+  font: inherit;
+  cursor: pointer;
   animation: waiting-news-fade 700ms ease-out both;
+}
+
+.waiting-news:focus-visible {
+  outline: 3px solid var(--ocean-ink);
+  outline-offset: 7px;
 }
 
 .waiting-news__gull {

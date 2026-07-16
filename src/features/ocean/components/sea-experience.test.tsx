@@ -18,7 +18,7 @@ const waitingSnapshot: OceanSnapshot = {
 describe("sea experience", () => {
   it("shows the gull waiting state only when the ocean has no message to receive", () => {
     const html = renderToStaticMarkup(
-      <HomeScreen snapshot={waitingSnapshot} catching={false} onNavigate={() => undefined} onCatch={async () => undefined} />,
+      <HomeScreen snapshot={waitingSnapshot} catching={false} onNavigate={() => undefined} onCatch={async () => undefined} onSeagull={() => undefined} />,
     );
 
     expect(html).toContain("새 소식을 기다리는 중 …");
@@ -36,6 +36,7 @@ describe("sea experience", () => {
         catching={false}
         onNavigate={() => undefined}
         onCatch={async () => undefined}
+        onSeagull={() => undefined}
       />,
     );
 

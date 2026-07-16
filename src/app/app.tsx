@@ -18,6 +18,7 @@ import { WriteScreen } from "@/features/ocean/components/write-screen";
 import { adminGateway, oceanGateway } from "@/features/ocean/services/runtime";
 import type { OceanSnapshot } from "@/features/ocean/types/ocean";
 import { BEACH_IMAGE } from "@/shared/brand";
+import { playIncomingWave, playSeagullCall } from "@/features/ocean/services/ocean-audio";
 
 const wait = (duration: number) => new Promise((resolve) => window.setTimeout(resolve, duration));
 
@@ -30,6 +31,17 @@ export function App() {
   const [sceneBusy, setSceneBusy] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const operationEpochRef = useRef(0);
+  const previousBottleAvailableRef = useRef<boolean | null>(null);
+
+  useEffect(() => {
+    if (
+      previousBottleAvailableRef.current === false
+      && snapshot?.bottleAvailable === true
+    ) {
+      playIncomingWave();
+    }
+    previousBottleAvailableRef.current = snapshot?.bottleAvailable ?? null;
+  }, [snapshot?.bottleAvailable]);
 
   useEffect(() => {
     oceanGateway
@@ -202,6 +214,7 @@ export function App() {
         catching={catching}
         onNavigate={navigate}
         onCatch={catchFromHome}
+        onSeagull={playSeagullCall}
       />
     );
   }
@@ -209,7 +222,7 @@ export function App() {
   return (
     <AppShell
       controlsLocked={sceneBusy || catching}
-      onHome={() => navigate("home")}
+      onHome={() => route === "home" ? window.location.reload() : navigate("home")}
     >
       {content}
     </AppShell>

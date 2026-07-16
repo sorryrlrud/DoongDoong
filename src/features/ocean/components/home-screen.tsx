@@ -16,9 +16,10 @@ interface HomeScreenProps {
   catching: boolean;
   onNavigate: (route: AppRoute) => void;
   onCatch: () => Promise<void>;
+  onSeagull: () => void;
 }
 
-export function HomeScreen({ snapshot, catching, onNavigate, onCatch }: HomeScreenProps) {
+export function HomeScreen({ snapshot, catching, onNavigate, onCatch, onSeagull }: HomeScreenProps) {
   return (
     <section className="shore-scene" aria-label="둥둥 해변">
       <PageHeading className="sr-only">
@@ -53,10 +54,16 @@ export function HomeScreen({ snapshot, catching, onNavigate, onCatch }: HomeScre
       ) : null}
 
       {!snapshot.bottleAvailable && !snapshot.activeBottle ? (
-        <div className="waiting-news" role="status" aria-live="polite">
+        <button
+          className="waiting-news"
+          type="button"
+          onClick={onSeagull}
+          disabled={catching}
+          aria-label="갈매기 울음소리 듣기"
+        >
           <img className="waiting-news__gull" src={SEAGULL_IMAGE} alt="" />
           <span>새 소식을 기다리는 중 …</span>
-        </div>
+        </button>
       ) : null}
 
       {snapshot.keptBottles.length > 0 ? (
