@@ -38,8 +38,6 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [linkingGitHub, setLinkingGitHub] = useState(false);
-  const [seedingDemo, setSeedingDemo] = useState(false);
-  const [seedNotice, setSeedNotice] = useState<string | null>(null);
 
   const loadDashboard = useCallback(async (
     nextQuery: string,
@@ -102,21 +100,6 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
     }
   };
 
-  const seedDemoMessages = async () => {
-    if (!gateway || seedingDemo) return;
-    setSeedingDemo(true);
-    setSeedNotice(null);
-    try {
-      const inserted = await gateway.seedDemoMessages();
-      setSeedNotice(inserted > 0 ? `전세계 데모 편지 ${inserted}장을 추가했습니다.` : "데모 편지가 이미 모두 준비되어 있습니다.");
-      await loadDashboard(query, status);
-    } catch (caught) {
-      setError(getErrorMessage(caught));
-    } finally {
-      setSeedingDemo(false);
-    }
-  };
-
   if (error && isPermissionError(error)) {
     return (
       <main className="admin-access">
@@ -159,17 +142,10 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
           <PageHeading>운영 현황</PageHeading>
           <p>사용자와 병편지를 읽기 전용으로 확인합니다.</p>
         </div>
-        <div className="admin-header__actions">
-          <button className="button button--primary button--small" type="button" onClick={() => void seedDemoMessages()} disabled={seedingDemo || loading}>
-            {seedingDemo ? "DEMO 추가 중…" : "DEMO 편지 넣기"}
-          </button>
-          <button className="button button--ghost button--small" type="button" onClick={onExit}>
-            바다로 돌아가기
-          </button>
-        </div>
+        <button className="button button--ghost button--small" type="button" onClick={onExit}>
+          바다로 돌아가기
+        </button>
       </header>
-
-      {seedNotice ? <p className="admin-notice" role="status">{seedNotice}</p> : null}
 
       {loading && !dashboard ? <p className="admin-state">관리자 데이터를 불러오는 중…</p> : null}
       {error && !isPermissionError(error) ? (

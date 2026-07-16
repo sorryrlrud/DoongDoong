@@ -59,6 +59,5 @@ export interface AdminAuthInfo {
 export interface AdminGateway {
   getAuthInfo(): Promise<AdminAuthInfo>;
   beginGitHubLogin(): Promise<void>;
-  seedDemoMessages(): Promise<number>;
   getDashboard(filters?: AdminDashboardFilters): Promise<AdminDashboard>;
 }

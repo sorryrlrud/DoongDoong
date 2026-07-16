@@ -34,7 +34,6 @@ export interface OceanSnapshot {
   bottleAvailable: boolean;
   activeBottle: ActiveBottle | null;
   keptBottles: KeptBottle[];
-  isDemo: boolean;
 }
 
 export interface BottleDraft {
@@ -53,7 +52,6 @@ export interface OceanGateway {
   openBottle(id: string): Promise<OceanSnapshot>;
   resolveBottle(id: string, resolution: BottleResolution): Promise<OceanSnapshot>;
   updateSea(seaId: SeaId): Promise<OceanSnapshot>;
-  resetDemo(): Promise<OceanSnapshot>;
 }
 
 export type OceanErrorCode =

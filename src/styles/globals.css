@@ -320,22 +320,6 @@ h3,
   gap: 2px;
 }
 
-.demo-stamp {
-  display: inline-block;
-  width: fit-content;
-  padding: 3px 8px 2px;
-  transform: rotate(-2deg);
-  border: 1.5px solid var(--coral);
-  border-radius: 4px;
-  color: var(--coral-dark);
-  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  line-height: 1.2;
-  animation: tiny-pop 220ms ease-out both;
-}
-
 .main-content {
   min-height: calc(100dvh - 74px);
 }
@@ -525,14 +509,6 @@ h3,
 
 .hero-actions .button {
   min-width: 176px;
-}
-
-.demo-note {
-  max-width: 560px;
-  margin-top: 23px;
-  color: rgba(23, 63, 84, 0.7);
-  font-size: 12px;
-  font-weight: 650;
 }
 
 .ocean-status {
@@ -1350,21 +1326,15 @@ h3,
   color: rgba(23, 63, 84, 0.66);
 }
 
-.setting-section--row,
-.setting-section--demo {
+.setting-section--row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 30px;
 }
 
-.setting-section--row p,
-.setting-section--demo p {
+.setting-section--row p {
   margin-bottom: 0;
-}
-
-.setting-section--demo .demo-stamp {
-  margin-bottom: 8px;
 }
 
 .toggle {
@@ -1634,20 +1604,8 @@ h3,
   }
 
   .brand__en,
-  .header-actions .text-button,
-  .header-actions .demo-stamp {
+  .header-actions .text-button {
     display: none;
-  }
-
-  .header-actions::after {
-    content: "DEMO";
-    padding: 3px 7px;
-    border: 1.5px solid var(--coral);
-    border-radius: 4px;
-    color: var(--coral-dark);
-    font-family: ui-monospace, Menlo, monospace;
-    font-size: 9px;
-    font-weight: 900;
   }
 
   .main-content {
@@ -1748,11 +1706,6 @@ h3,
     min-height: 64px;
     padding: 10px 13px;
     font-size: 15px;
-  }
-
-  .demo-note {
-    margin-top: 15px;
-    font-size: 11px;
   }
 
   .ocean-status {
@@ -1887,14 +1840,12 @@ h3,
   }
 
   .guide-cta,
-  .setting-section--row,
-  .setting-section--demo {
+  .setting-section--row {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .guide-cta .button,
-  .setting-section--demo > .button {
+  .guide-cta .button {
     width: 100%;
   }
 
@@ -2179,8 +2130,7 @@ h3,
   min-height: 100dvh;
 }
 
-.scene-home,
-.demo-reset {
+.scene-home {
   position: fixed;
   z-index: 500;
   top: calc(18px + env(safe-area-inset-top));
@@ -2190,8 +2140,7 @@ h3,
   cursor: pointer;
 }
 
-.scene-home:disabled,
-.demo-reset:disabled {
+.scene-home:disabled {
   cursor: wait;
   opacity: 0.45;
 }
@@ -2204,21 +2153,6 @@ h3,
   font-weight: 700;
   letter-spacing: -0.03em;
   text-shadow: 0 2px 0 var(--paper-light);
-}
-
-.demo-reset {
-  right: clamp(18px, 4vw, 56px);
-  padding: 6px 10px 5px;
-  transform: rotate(2deg);
-  border: 1.5px solid var(--coral-dark);
-  border-radius: 5px;
-  background: rgba(255, 250, 240, 0.78);
-  color: var(--coral-dark);
-  box-shadow: 2px 2px 0 rgba(23, 63, 84, 0.3);
-  font-family: ui-monospace, Menlo, monospace;
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
 }
 
 .shore-scene,
@@ -2732,24 +2666,6 @@ h3,
   line-height: 1;
 }
 
-.admin-header__actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.admin-notice {
-  margin: -12px 0 22px;
-  padding: 10px 14px;
-  border: 1.5px solid var(--ocean-ink);
-  border-radius: 8px;
-  background: #e3eff0;
-  color: var(--ocean-deep);
-  font-size: 13px;
-  font-weight: 800;
-}
-
 .admin-header p:last-child {
   margin-bottom: 0;
   color: rgba(23, 63, 84, 0.72);
@@ -3055,18 +2971,13 @@ h3,
     padding-bottom: 0;
   }
 
-  .scene-home,
-  .demo-reset {
+  .scene-home {
     top: calc(10px + env(safe-area-inset-top));
   }
 
   .scene-home {
     left: 10px;
     font-size: 24px;
-  }
-
-  .demo-reset {
-    right: 12px;
   }
 
   .scene-background {

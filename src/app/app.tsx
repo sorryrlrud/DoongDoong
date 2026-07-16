@@ -3,7 +3,6 @@ import { AppShell } from "@/app/app-shell";
 import { AdminScreen } from "@/features/admin/components/admin-screen";
 import {
   loadPreferences,
-  resetPreferences,
   savePreferences,
   type AppPreferences,
 } from "@/app/preferences";
@@ -27,7 +26,6 @@ export function App() {
   const [preferences, setPreferences] = useState<AppPreferences>(loadPreferences);
   const [now, setNow] = useState(Date.now);
   const [catching, setCatching] = useState(false);
-  const [resettingDemo, setResettingDemo] = useState(false);
   const [sceneBusy, setSceneBusy] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const operationEpochRef = useRef(0);
@@ -100,20 +98,6 @@ export function App() {
       oceanGateway.getSnapshot().then(setSnapshot).catch(() => undefined);
     } finally {
       setCatching(false);
-    }
-  };
-
-  const resetDemo = async () => {
-    if (resettingDemo || sceneBusy || catching) return;
-    operationEpochRef.current += 1;
-    setResettingDemo(true);
-    try {
-      const freshSnapshot = await oceanGateway.resetDemo();
-      setSnapshot(freshSnapshot);
-      setPreferences(resetPreferences());
-      navigate("home");
-    } finally {
-      setResettingDemo(false);
     }
   };
 
@@ -211,11 +195,8 @@ export function App() {
 
   return (
     <AppShell
-      isDemo={snapshot.isDemo}
-      resettingDemo={resettingDemo}
       controlsLocked={sceneBusy || catching}
       onHome={() => navigate("home")}
-      onDemoReset={resetDemo}
     >
       {content}
     </AppShell>

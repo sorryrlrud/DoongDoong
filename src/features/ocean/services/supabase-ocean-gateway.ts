@@ -79,10 +79,6 @@ export class SupabaseOceanGateway implements OceanGateway {
     return this.call("ocean_update_sea", { p_sea_id: seaId });
   }
 
-  async resetDemo(): Promise<OceanSnapshot> {
-    return this.getSnapshot();
-  }
-
   private async call(functionName: string, args?: Record<string, unknown>): Promise<OceanSnapshot> {
     await ensureSupabaseSession(this.client);
     const { data, error } = await this.client.rpc(functionName, args);
@@ -127,7 +123,6 @@ export class SupabaseOceanGateway implements OceanGateway {
         keptAt: new Date(message.keptAt).getTime(),
         expiresAt: new Date(message.expiresAt).getTime(),
       })),
-      isDemo: false,
     };
   }
 }
