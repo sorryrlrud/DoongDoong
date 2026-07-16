@@ -3,11 +3,15 @@ const PREFERENCES_KEY = "doongdoong.preferences.v1";
 export interface AppPreferences {
   onboarded: boolean;
   reduceMotion: boolean;
+  defaultSignature: string;
+  autoIncludeDate: boolean;
 }
 
 const DEFAULT_PREFERENCES: AppPreferences = {
   onboarded: false,
   reduceMotion: false,
+  defaultSignature: "",
+  autoIncludeDate: false,
 };
 
 export const resetPreferences = (): AppPreferences => {

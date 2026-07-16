@@ -246,7 +246,11 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
                     <div><dt>메시지 ID</dt><dd><code>{message.id}</code></dd></div>
                     <div><dt>발신 UID</dt><dd><code>{message.authorUid}</code></dd></div>
                     <div><dt>수신 UID</dt><dd><code>{message.recipientUid ?? "-"}</code></dd></div>
+                    <div><dt>마지막 띄운 UID</dt><dd><code>{message.lastDriftedByUid ?? "-"}</code></dd></div>
                     <div><dt>바다</dt><dd>{message.seaId}</dd></div>
+                    {message.status === "drifting" && message.availableAt ? (
+                      <div><dt>다음 도착 가능</dt><dd>{formatDate(message.availableAt)}</dd></div>
+                    ) : null}
                   </dl>
                 </article>
               ))}

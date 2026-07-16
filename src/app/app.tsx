@@ -154,10 +154,10 @@ export function App() {
       <Onboarding
         initialSea={snapshot.seaId}
         initialCountryCode={snapshot.countryCode}
-        onComplete={async (countryCode, seaId) => {
+        onComplete={async (countryCode, seaId, defaultSignature) => {
           const nextSnapshot = await oceanGateway.completeOnboarding(countryCode, seaId);
           setSnapshot(nextSnapshot);
-          updatePreferences({ ...preferences, onboarded: true });
+          updatePreferences({ ...preferences, onboarded: true, defaultSignature });
         }}
       />
     );
@@ -169,6 +169,8 @@ export function App() {
       <WriteScreen
         snapshot={snapshot}
         reduceMotion={preferences.reduceMotion}
+        defaultSignature={preferences.defaultSignature}
+        autoIncludeDate={preferences.autoIncludeDate}
         onNavigate={navigate}
         onSnapshot={acceptSnapshot}
         onBusyChange={setSceneBusy}
@@ -201,6 +203,12 @@ export function App() {
         snapshot={snapshot}
         reduceMotion={preferences.reduceMotion}
         onReduceMotionChange={(reduceMotion) => updatePreferences({ ...preferences, reduceMotion })}
+        defaultSignature={preferences.defaultSignature}
+        autoIncludeDate={preferences.autoIncludeDate}
+        onWritingDefaultsChange={(writingDefaults) => updatePreferences({
+          ...preferences,
+          ...writingDefaults,
+        })}
         onSnapshot={acceptSnapshot}
       />
     );

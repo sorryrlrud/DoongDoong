@@ -12,7 +12,7 @@ import type { SeaId } from "@/features/ocean/types/ocean";
 interface OnboardingProps {
   initialSea: SeaId;
   initialCountryCode?: string;
-  onComplete: (countryCode: string, seaId: SeaId) => Promise<void>;
+  onComplete: (countryCode: string, seaId: SeaId, defaultSignature: string) => Promise<void>;
 }
 
 export function Onboarding({ initialSea, initialCountryCode, onComplete }: OnboardingProps) {
@@ -21,6 +21,7 @@ export function Onboarding({ initialSea, initialCountryCode, onComplete }: Onboa
     initialCountryCode ? initialSea : recommendedSeaForCountry(suggestedCountryCode()),
   );
   const [accepted, setAccepted] = useState(false);
+  const [defaultSignature, setDefaultSignature] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,7 +30,7 @@ export function Onboarding({ initialSea, initialCountryCode, onComplete }: Onboa
     setSubmitting(true);
     setError(null);
     try {
-      await onComplete(countryCode, seaId);
+      await onComplete(countryCode, seaId, defaultSignature.trim());
     } catch {
       setError("시작하지 못했어요. 잠시 뒤 다시 시도해 주세요.");
     } finally {
@@ -80,6 +81,18 @@ export function Onboarding({ initialSea, initialCountryCode, onComplete }: Onboa
               {countryName(countryCode)}에서 가까운 바다를 먼저 골랐어요. 원하면 바꿀 수 있어요.
             </p>
           </fieldset>
+
+          <label className="onboarding-signature" htmlFor="onboarding-signature">
+            <span>편지에 쓸 기본 서명 <small>선택</small></span>
+            <input
+              id="onboarding-signature"
+              type="text"
+              value={defaultSignature}
+              onChange={(event) => setDefaultSignature(event.target.value)}
+              maxLength={20}
+              placeholder="예: 어느 밤의 여행자"
+            />
+          </label>
 
           <label className="check-row">
             <input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} />

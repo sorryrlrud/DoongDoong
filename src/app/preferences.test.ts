@@ -27,10 +27,30 @@ describe("preferences", () => {
   });
 
   it("resets onboarding and motion settings for the tutorial", () => {
-    savePreferences({ onboarded: true, reduceMotion: true });
+    savePreferences({
+      onboarded: true,
+      reduceMotion: true,
+      defaultSignature: "밤의 여행자",
+      autoIncludeDate: true,
+    });
 
-    expect(loadPreferences()).toEqual({ onboarded: true, reduceMotion: true });
-    expect(resetPreferences()).toEqual({ onboarded: false, reduceMotion: false });
-    expect(loadPreferences()).toEqual({ onboarded: false, reduceMotion: false });
+    expect(loadPreferences()).toEqual({
+      onboarded: true,
+      reduceMotion: true,
+      defaultSignature: "밤의 여행자",
+      autoIncludeDate: true,
+    });
+    expect(resetPreferences()).toEqual({
+      onboarded: false,
+      reduceMotion: false,
+      defaultSignature: "",
+      autoIncludeDate: false,
+    });
+    expect(loadPreferences()).toEqual({
+      onboarded: false,
+      reduceMotion: false,
+      defaultSignature: "",
+      autoIncludeDate: false,
+    });
   });
 });

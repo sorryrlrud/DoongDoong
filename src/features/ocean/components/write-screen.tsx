@@ -9,6 +9,8 @@ import { DRAFT_LENGTH_ERROR, hasValidDraft } from "@/features/ocean/utils/write-
 interface WriteScreenProps {
   snapshot: OceanSnapshot;
   reduceMotion: boolean;
+  defaultSignature: string;
+  autoIncludeDate: boolean;
   onNavigate: (route: AppRoute) => void;
   onSnapshot: (snapshot: OceanSnapshot) => void;
   onBusyChange: (busy: boolean) => void;
@@ -21,13 +23,15 @@ const wait = (duration: number) => new Promise((resolve) => window.setTimeout(re
 export function WriteScreen({
   snapshot,
   reduceMotion,
+  defaultSignature,
+  autoIncludeDate,
   onNavigate,
   onSnapshot,
   onBusyChange,
 }: WriteScreenProps) {
   const [body, setBody] = useState("");
-  const [signature, setSignature] = useState("");
-  const [includeDate, setIncludeDate] = useState(false);
+  const [signature, setSignature] = useState(defaultSignature);
+  const [includeDate, setIncludeDate] = useState(autoIncludeDate);
   const [seaId, setSeaId] = useState<SeaId>(snapshot.seaId);
   const [stage, setStage] = useState<WriteStage>("editing");
   const [checking, setChecking] = useState(false);
@@ -48,6 +52,14 @@ export function WriteScreen({
   }, [snapshot.remainingSends, stage, onNavigate]);
 
   useEffect(() => () => onBusyChange(false), [onBusyChange]);
+
+  useEffect(() => {
+    if (error !== DRAFT_LENGTH_ERROR) return;
+    const timer = window.setTimeout(() => {
+      setError((currentError) => currentError === DRAFT_LENGTH_ERROR ? null : currentError);
+    }, 2_600);
+    return () => window.clearTimeout(timer);
+  }, [error]);
 
   const packAndLaunch = async () => {
     if (!canSend || checking || sendingRef.current) {

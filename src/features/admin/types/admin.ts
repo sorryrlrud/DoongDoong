@@ -32,12 +32,14 @@ export interface AdminMessageRow {
   id: string;
   authorUid: string;
   recipientUid: string | null;
+  lastDriftedByUid?: string | null;
   body: string;
   signature: string | null;
   seaId: string;
   status: string;
   reportCount: number;
   createdAt: string;
+  availableAt?: string;
 }
 
 export interface AdminDashboard {
