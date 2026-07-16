@@ -2732,6 +2732,24 @@ h3,
   line-height: 1;
 }
 
+.admin-header__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.admin-notice {
+  margin: -12px 0 22px;
+  padding: 10px 14px;
+  border: 1.5px solid var(--ocean-ink);
+  border-radius: 8px;
+  background: #e3eff0;
+  color: var(--ocean-deep);
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .admin-header p:last-child {
   margin-bottom: 0;
   color: rgba(23, 63, 84, 0.72);

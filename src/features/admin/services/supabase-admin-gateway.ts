@@ -33,6 +33,15 @@ export class SupabaseAdminGateway implements AdminGateway {
     window.location.assign(response.data.url);
   }
 
+  async seedDemoMessages(): Promise<number> {
+    await ensureSupabaseSession(this.client);
+    const { data, error } = await this.client.rpc("admin_seed_demo_messages");
+    if (error) throw error;
+
+    const result = data as { inserted?: unknown } | null;
+    return typeof result?.inserted === "number" ? result.inserted : 0;
+  }
+
   async getDashboard(filters: AdminDashboardFilters = {}): Promise<AdminDashboard> {
     await ensureSupabaseSession(this.client);
     const query = filters.query?.trim() || null;
