@@ -37,4 +37,36 @@ describe("SupabaseOceanGateway", () => {
     });
     expect(rpc).toHaveBeenNthCalledWith(2, "ocean_update_sea", { p_sea_id: "pacific" });
   });
+
+  it("starts a new anonymous session when an administrator deleted the current account", async () => {
+    const getSession = vi
+      .fn()
+      .mockResolvedValueOnce({ data: { session: { user: { id: "deleted-user" } } }, error: null })
+      .mockResolvedValueOnce({ data: { session: null }, error: null });
+    const signOut = vi.fn().mockResolvedValue({ error: null });
+    const signInAnonymously = vi.fn().mockResolvedValue({
+      data: { user: { id: "new-user" } },
+      error: null,
+    });
+    const rpc = vi
+      .fn()
+      .mockResolvedValueOnce({
+        data: null,
+        error: { message: "ACCOUNT_DELETED: 삭제된 계정입니다." },
+      })
+      .mockResolvedValueOnce({ data: { ...snapshot, countryCode: null }, error: null });
+    const client = {
+      auth: { getSession, signOut, signInAnonymously },
+      rpc,
+    };
+    const gateway = new SupabaseOceanGateway(client as never);
+
+    await expect(gateway.getSnapshot()).resolves.toMatchObject({
+      seaId: "pacific",
+      countryCode: undefined,
+    });
+    expect(signOut).toHaveBeenCalledWith({ scope: "local" });
+    expect(signInAnonymously).toHaveBeenCalledOnce();
+    expect(rpc).toHaveBeenCalledTimes(2);
+  });
 });

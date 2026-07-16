@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { ensureSupabaseSession } from "@/features/ocean/services/supabase-client";
+import { clearSupabaseSession, ensureSupabaseSession } from "@/features/ocean/services/supabase-client";
 import {
   OceanError,
   type BottleDraft,
@@ -107,11 +107,19 @@ export class SupabaseOceanGateway implements OceanGateway {
     return this.call("ocean_update_sea", { p_sea_id: seaId });
   }
 
-  private async call(functionName: string, args?: Record<string, unknown>): Promise<OceanSnapshot> {
+  private async call(
+    functionName: string,
+    args?: Record<string, unknown>,
+    retryDeletedAccount = true,
+  ): Promise<OceanSnapshot> {
     await ensureSupabaseSession(this.client);
     const { data, error } = await this.client.rpc(functionName, args);
 
     if (error) {
+      if (retryDeletedAccount && error.message.includes("ACCOUNT_DELETED")) {
+        await clearSupabaseSession(this.client);
+        return this.call(functionName, args, false);
+      }
       const code = ERROR_CODES.find((candidate) => error.message.includes(candidate));
       if (code) throw new OceanError(code, error.message.replace(`${code}:`, "").trim());
       throw error;
