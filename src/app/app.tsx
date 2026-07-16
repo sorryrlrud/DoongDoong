@@ -31,17 +31,17 @@ export function App() {
   const [sceneBusy, setSceneBusy] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const operationEpochRef = useRef(0);
-  const previousBottleAvailableRef = useRef<boolean | null>(null);
+  const previousIncomingMessageRef = useRef<boolean | null>(null);
+  const hasIncomingMessage = snapshot
+    ? snapshot.bottleAvailable || (!snapshot.waitingForNews && !snapshot.activeBottle)
+    : null;
 
   useEffect(() => {
-    if (
-      previousBottleAvailableRef.current === false
-      && snapshot?.bottleAvailable === true
-    ) {
+    if (previousIncomingMessageRef.current === false && hasIncomingMessage === true) {
       playIncomingWave();
     }
-    previousBottleAvailableRef.current = snapshot?.bottleAvailable ?? null;
-  }, [snapshot?.bottleAvailable]);
+    previousIncomingMessageRef.current = hasIncomingMessage;
+  }, [hasIncomingMessage]);
 
   useEffect(() => {
     oceanGateway
@@ -60,7 +60,7 @@ export function App() {
           if (operationEpochRef.current === operationEpoch) setSnapshot(nextSnapshot);
         })
         .catch(() => undefined);
-    }, 60_000);
+    }, 15_000);
     return () => window.clearInterval(timer);
   }, []);
 
