@@ -2347,7 +2347,7 @@ h3,
   bottom: clamp(12px, 3vh, 42px);
   left: clamp(28px, 8vw, 130px);
   display: grid;
-  width: clamp(170px, 21vw, 280px);
+  width: clamp(145px, 17vw, 230px);
   justify-items: center;
   color: rgba(23, 63, 84, 0.78);
   animation: waiting-news-fade 700ms ease-out both;
@@ -2356,9 +2356,6 @@ h3,
 .writing-rest > span {
   z-index: 1;
   margin-bottom: -14%;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: rgba(255, 250, 240, 0.72);
   font-size: 11px;
   font-weight: 750;
   white-space: nowrap;
@@ -2439,9 +2436,6 @@ h3,
 }
 
 .waiting-news > span:last-child {
-  padding: 2px 7px;
-  border-radius: 999px;
-  background: rgba(255, 250, 240, 0.68);
   font-size: 11px;
   font-weight: 750;
   white-space: nowrap;
@@ -3251,7 +3245,7 @@ h3,
   .writing-rest {
     bottom: calc(2px + env(safe-area-inset-bottom));
     left: 3px;
-    width: clamp(150px, 43vw, 186px);
+    width: clamp(122px, 38vw, 160px);
   }
 
   .writing-rest > span {
