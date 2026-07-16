@@ -112,11 +112,18 @@ export class SupabaseOceanGateway implements OceanGateway {
     const { error } = await this.client.rpc("ocean_reset_demo_user");
     if (error) {
       // The database deliberately refuses to delete administrator accounts. For
-      // the demo, signing that account out has the same visible result as a
-      // reset: the next snapshot creates a fresh anonymous user, while the
-      // administrator account remains intact.
+      // the demo, keep that account signed in and reset only its demo limits.
       if (error.message.includes("ADMIN_ACCOUNT")) {
-        await clearSupabaseSession(this.client);
+        const { error: resetError } = await this.client.rpc("ocean_reset_admin_demo_cooldowns");
+        if (resetError) {
+          // The browser bundle can reach production before its database
+          // migration. Keep the previous safe demo restart available then.
+          if (isMissingRpcFunction(resetError, "ocean_reset_admin_demo_cooldowns")) {
+            await clearSupabaseSession(this.client);
+            return;
+          }
+          throw resetError;
+        }
         return;
       }
 
