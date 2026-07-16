@@ -19,6 +19,7 @@ import { adminGateway, oceanGateway } from "@/features/ocean/services/runtime";
 import type { OceanSnapshot } from "@/features/ocean/types/ocean";
 import { BEACH_IMAGE } from "@/shared/brand";
 import { playIncomingWave, playSeagullCall } from "@/features/ocean/services/ocean-audio";
+import { recommendedSeaForCountry } from "@/features/ocean/countries";
 
 const wait = (duration: number) => new Promise((resolve) => window.setTimeout(resolve, duration));
 
@@ -149,7 +150,11 @@ export function App() {
       <Onboarding
         initialCountryCode={snapshot.countryCode}
         onComplete={async (countryCode, defaultSignature) => {
-          const nextSnapshot = await oceanGateway.completeOnboarding(countryCode, snapshot.seaId);
+          const nextSnapshot = await oceanGateway.completeOnboarding(
+            countryCode,
+            recommendedSeaForCountry(countryCode),
+            defaultSignature,
+          );
           setSnapshot(nextSnapshot);
           updatePreferences({ ...preferences, onboarded: true, defaultSignature });
         }}
@@ -194,7 +199,6 @@ export function App() {
   } else if (route === "settings") {
     content = (
       <SettingsScreen
-        snapshot={snapshot}
         reduceMotion={preferences.reduceMotion}
         onReduceMotionChange={(reduceMotion) => updatePreferences({ ...preferences, reduceMotion })}
         defaultSignature={preferences.defaultSignature}
@@ -203,7 +207,6 @@ export function App() {
           ...preferences,
           ...writingDefaults,
         })}
-        onSnapshot={acceptSnapshot}
       />
     );
   } else {

@@ -88,19 +88,33 @@ export class SupabaseOceanGateway implements OceanGateway {
     });
   }
 
-  async completeOnboarding(countryCode: string, seaId: SeaId): Promise<OceanSnapshot> {
+  async completeOnboarding(
+    countryCode: string,
+    seaId: SeaId,
+    defaultSignature: string,
+  ): Promise<OceanSnapshot> {
     try {
       return await this.call("ocean_complete_onboarding", {
         p_country_code: countryCode,
         p_sea_id: seaId,
+        p_default_signature: defaultSignature.trim() || null,
       });
     } catch (error) {
       // Keep the deployed app usable until the accompanying migration reaches Supabase.
       // The legacy RPC can still persist the selected sea; country metadata begins
       // syncing automatically for newly onboarded users once the migration is applied.
       if (!isMissingRpcFunction(error, "ocean_complete_onboarding")) throw error;
-      return this.updateSea(seaId);
+      return this.call("ocean_complete_onboarding", {
+        p_country_code: countryCode,
+        p_sea_id: seaId,
+      });
     }
+  }
+
+  async updateDefaultSignature(defaultSignature: string): Promise<OceanSnapshot> {
+    return this.call("ocean_update_default_signature", {
+      p_default_signature: defaultSignature.trim() || null,
+    });
   }
 
   async updateSea(seaId: SeaId): Promise<OceanSnapshot> {

@@ -26,7 +26,7 @@ export interface AdminStats {
 export interface AdminUserRow {
   id: string;
   countryCode: string | null;
-  seaId: string;
+  defaultSignature: string | null;
   locale: string;
   status: string;
   role: string;

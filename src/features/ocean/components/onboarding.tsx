@@ -45,7 +45,7 @@ export function Onboarding({ initialCountryCode, onComplete }: OnboardingProps) 
           </ul>
 
           <label className="onboarding-country" htmlFor="onboarding-country">
-            <span>어느 나라에서 바다를 열까요?</span>
+            <span>어느 나라에서 띄운 메시지인가요?</span>
             <select
               id="onboarding-country"
               value={countryCode}

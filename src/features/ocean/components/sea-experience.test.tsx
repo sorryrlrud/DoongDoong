@@ -26,26 +26,26 @@ describe("sea experience", () => {
       />,
     );
 
+    expect(html).toContain("어느 나라에서 띄운 메시지인가요?");
+    expect(html).not.toContain("어느 나라에서 바다를 열까요?");
     expect(html).not.toContain("병을 건질 바다");
     expect(html).not.toContain("onboarding-sea");
   });
 
-  it("describes the saved sea as a sending default only", () => {
+  it("does not expose a default sea in settings", () => {
     const html = renderToStaticMarkup(
       <SettingsScreen
-        snapshot={waitingSnapshot}
         reduceMotion={false}
         onReduceMotionChange={() => undefined}
         defaultSignature=""
         autoIncludeDate={false}
         onWritingDefaultsChange={() => undefined}
-        onSnapshot={() => undefined}
       />,
     );
 
-    expect(html).toContain("병을 띄울 기본 바다");
-    expect(html).toContain("병은 모든 바다에서 도착해요.");
+    expect(html).not.toContain("병을 띄울 기본 바다");
     expect(html).not.toContain("병을 건질 바다");
+    expect(html).toContain("편지 작성 기본값");
   });
 
   it("shows the gull waiting state only when the ocean has no message to receive", () => {

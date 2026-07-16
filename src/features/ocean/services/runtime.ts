@@ -26,6 +26,7 @@ const unavailableOceanGateway: OceanGateway = {
   openBottle: missingConfiguration,
   resolveBottle: missingConfiguration,
   completeOnboarding: missingConfiguration,
+  updateDefaultSignature: missingConfiguration,
   updateSea: missingConfiguration,
 };
 

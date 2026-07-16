@@ -1,11 +1,8 @@
 import { useState } from "react";
-import { SeaPicker } from "@/features/ocean/components/sea-picker";
 import { oceanGateway } from "@/features/ocean/services/runtime";
-import { type OceanSnapshot, type SeaId } from "@/features/ocean/types/ocean";
 import { PageHeading } from "@/shared/page-heading";
 
 interface SettingsScreenProps {
-  snapshot: OceanSnapshot;
   reduceMotion: boolean;
   onReduceMotionChange: (value: boolean) => void;
   defaultSignature: string;
@@ -14,26 +11,23 @@ interface SettingsScreenProps {
     defaultSignature: string;
     autoIncludeDate: boolean;
   }) => void;
-  onSnapshot: (snapshot: OceanSnapshot) => void;
 }
 
 export function SettingsScreen({
-  snapshot,
   reduceMotion,
   onReduceMotionChange,
   defaultSignature,
   autoIncludeDate,
   onWritingDefaultsChange,
-  onSnapshot,
 }: SettingsScreenProps) {
   const [error, setError] = useState<string | null>(null);
 
-  const updateSea = async (seaId: SeaId) => {
+  const syncDefaultSignature = async () => {
     setError(null);
     try {
-      onSnapshot(await oceanGateway.updateSea(seaId));
+      await oceanGateway.updateDefaultSignature(defaultSignature);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "기본 바다를 바꾸지 못했어요.");
+      setError(caught instanceof Error ? caught.message : "기본 서명을 저장하지 못했어요.");
     }
   };
 
@@ -46,20 +40,6 @@ export function SettingsScreen({
       {error ? <div className="alert" role="alert">{error}</div> : null}
 
       <div className="settings-list">
-        <section className="setting-section" aria-labelledby="setting-sea-title">
-          <div>
-            <h2 id="setting-sea-title">병을 띄울 기본 바다</h2>
-            <p>새 편지를 쓸 때 먼저 선택되는 바다예요. 병은 모든 바다에서 도착해요.</p>
-          </div>
-          <SeaPicker
-            value={snapshot.seaId}
-            name="settings-sea"
-            label="병을 띄울 기본 바다"
-            wide
-            onChange={updateSea}
-          />
-        </section>
-
         <section className="setting-section" aria-labelledby="setting-writing-title">
           <div>
             <h2 id="setting-writing-title">편지 작성 기본값</h2>
@@ -73,6 +53,7 @@ export function SettingsScreen({
                 value={defaultSignature}
                 maxLength={20}
                 placeholder="예: 어느 밤의 여행자"
+                onBlur={() => void syncDefaultSignature()}
                 onChange={(event) => onWritingDefaultsChange({
                   defaultSignature: event.target.value,
                   autoIncludeDate,

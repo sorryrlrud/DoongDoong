@@ -11,14 +11,14 @@ const snapshot = {
 };
 
 describe("SupabaseOceanGateway", () => {
-  it("uses the legacy sea RPC when the country onboarding migration is not deployed yet", async () => {
+  it("uses the legacy onboarding RPC until default signatures are deployed", async () => {
     const rpc = vi
       .fn()
       .mockResolvedValueOnce({
         data: null,
         error: {
           code: "PGRST202",
-          message: "Could not find the function public.ocean_complete_onboarding(p_country_code, p_sea_id)",
+          message: "Could not find the function public.ocean_complete_onboarding(p_country_code, p_default_signature, p_sea_id)",
         },
       })
       .mockResolvedValueOnce({ data: snapshot, error: null });
@@ -30,12 +30,33 @@ describe("SupabaseOceanGateway", () => {
     };
     const gateway = new SupabaseOceanGateway(client as never);
 
-    await expect(gateway.completeOnboarding("KR", "pacific")).resolves.toMatchObject({ seaId: "pacific" });
+    await expect(gateway.completeOnboarding("KR", "pacific", "밤의 여행자")).resolves.toMatchObject({ seaId: "pacific" });
     expect(rpc).toHaveBeenNthCalledWith(1, "ocean_complete_onboarding", {
       p_country_code: "KR",
       p_sea_id: "pacific",
+      p_default_signature: "밤의 여행자",
     });
-    expect(rpc).toHaveBeenNthCalledWith(2, "ocean_update_sea", { p_sea_id: "pacific" });
+    expect(rpc).toHaveBeenNthCalledWith(2, "ocean_complete_onboarding", {
+      p_country_code: "KR",
+      p_sea_id: "pacific",
+    });
+  });
+
+  it("syncs the default signature for administrators", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: snapshot, error: null });
+    const client = {
+      auth: {
+        getSession: vi.fn().mockResolvedValue({ data: { session: { user: { id: "user-id" } } }, error: null }),
+      },
+      rpc,
+    };
+    const gateway = new SupabaseOceanGateway(client as never);
+
+    await gateway.updateDefaultSignature("  밤의 여행자  ");
+
+    expect(rpc).toHaveBeenCalledWith("ocean_update_default_signature", {
+      p_default_signature: "밤의 여행자",
+    });
   });
 
   it("starts a new anonymous session when an administrator deleted the current account", async () => {

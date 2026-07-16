@@ -338,14 +338,14 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
             </div>
             <div className="admin-table-wrap">
               <table className="admin-table">
-                <thead><tr><th>UID</th><th>상태</th><th>국가</th><th>바다</th><th>발송</th><th>수신 가능 쿨타임</th><th>작성 메시지</th><th>가입일</th><th>관리</th></tr></thead>
+                <thead><tr><th>UID</th><th>상태</th><th>국가</th><th>기본 서명</th><th>발송</th><th>수신 가능 쿨타임</th><th>작성 메시지</th><th>가입일</th><th>관리</th></tr></thead>
                 <tbody>
                   {dashboard.users.map((user) => (
                     <tr key={user.id}>
                       <td><code>{user.id}</code>{user.role === "admin" ? <small>ADMIN</small> : null}</td>
                       <td>{user.status}</td>
                       <td>{user.countryCode ?? "-"}</td>
-                      <td>{user.seaId}</td>
+                      <td>{user.defaultSignature ?? "-"}</td>
                       <td>{user.dailySendCount}/2</td>
                       <td title={user.nextCatchAt ? formatDate(user.nextCatchAt) : undefined}>
                         {formatReceiveCooldown(user.nextCatchAt, currentTime)}

@@ -54,7 +54,8 @@ export interface OceanGateway {
   catchBottle(): Promise<OceanSnapshot>;
   openBottle(id: string): Promise<OceanSnapshot>;
   resolveBottle(id: string, resolution: BottleResolution): Promise<OceanSnapshot>;
-  completeOnboarding(countryCode: string, seaId: SeaId): Promise<OceanSnapshot>;
+  completeOnboarding(countryCode: string, seaId: SeaId, defaultSignature: string): Promise<OceanSnapshot>;
+  updateDefaultSignature(defaultSignature: string): Promise<OceanSnapshot>;
   updateSea(seaId: SeaId): Promise<OceanSnapshot>;
 }
 
