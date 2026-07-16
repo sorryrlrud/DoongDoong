@@ -25,7 +25,9 @@ const unavailableOceanGateway: OceanGateway = {
   catchBottle: missingConfiguration,
   openBottle: missingConfiguration,
   resolveBottle: missingConfiguration,
+  completeOnboarding: missingConfiguration,
   updateSea: missingConfiguration,
+  resetDemoUser: async () => missingConfiguration(),
 };
 
 export const oceanGateway: OceanGateway = supabaseClient

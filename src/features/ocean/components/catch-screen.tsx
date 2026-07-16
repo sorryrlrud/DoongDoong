@@ -1,6 +1,7 @@
 import { useEffect, useState, type MouseEvent } from "react";
 import type { AppRoute } from "@/app/use-hash-route";
 import { oceanGateway } from "@/features/ocean/services/runtime";
+import { countryName } from "@/features/ocean/countries";
 import type { BottleResolution, OceanSnapshot } from "@/features/ocean/types/ocean";
 import { BEACH_IMAGE, BOTTLE_WITH_LETTER_IMAGE } from "@/shared/brand";
 import { PageHeading } from "@/shared/page-heading";
@@ -138,6 +139,7 @@ export function CatchScreen({
 
       <img className="opened-letter-scene__bottle" src={BOTTLE_WITH_LETTER_IMAGE} alt="" />
       <article className="catch-letter" dir="auto">
+        {content.senderCountryCode ? <p className="catch-letter__origin">발신 국가 · {countryName(content.senderCountryCode)}</p> : null}
         {content.dateLabel ? <time>{content.dateLabel}</time> : null}
         <p>{content.body}</p>
         {content.signature ? <footer>{content.signature}</footer> : null}

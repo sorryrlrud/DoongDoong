@@ -13,6 +13,7 @@ export interface BottleContent {
   body: string;
   dateLabel?: string;
   signature?: string;
+  senderCountryCode?: string;
 }
 
 export interface ActiveBottle {
@@ -29,9 +30,11 @@ export interface KeptBottle extends BottleContent {
 
 export interface OceanSnapshot {
   seaId: SeaId;
+  countryCode?: string;
   remainingSends: number;
   nextCatchAt: number | null;
   bottleAvailable: boolean;
+  waitingForNews: boolean;
   activeBottle: ActiveBottle | null;
   keptBottles: KeptBottle[];
 }
@@ -51,7 +54,9 @@ export interface OceanGateway {
   catchBottle(): Promise<OceanSnapshot>;
   openBottle(id: string): Promise<OceanSnapshot>;
   resolveBottle(id: string, resolution: BottleResolution): Promise<OceanSnapshot>;
+  completeOnboarding(countryCode: string, seaId: SeaId): Promise<OceanSnapshot>;
   updateSea(seaId: SeaId): Promise<OceanSnapshot>;
+  resetDemoUser(): Promise<void>;
 }
 
 export type OceanErrorCode =
@@ -60,6 +65,7 @@ export type OceanErrorCode =
   | "NO_BOTTLE"
   | "BOTTLE_GONE"
   | "ACTIVE_BOTTLE"
+  | "ADMIN_ACCOUNT"
   | "INVALID_DRAFT";
 
 export class OceanError extends Error {

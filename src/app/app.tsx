@@ -29,6 +29,8 @@ export function App() {
   const [catching, setCatching] = useState(false);
   const [sceneBusy, setSceneBusy] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [demoResetting, setDemoResetting] = useState(false);
+  const [demoMessage, setDemoMessage] = useState<string | null>(null);
   const operationEpochRef = useRef(0);
 
   useEffect(() => {
@@ -81,10 +83,22 @@ export function App() {
     savePreferences(next);
   };
 
-  const replayTutorial = () => {
-    if (sceneBusy || catching) return;
-    setPreferences(resetPreferences());
-    navigate("home");
+  const replayTutorial = async () => {
+    if (sceneBusy || catching || demoResetting) return;
+    setDemoResetting(true);
+    setDemoMessage(null);
+    operationEpochRef.current += 1;
+    try {
+      await oceanGateway.resetDemoUser();
+      const nextSnapshot = await oceanGateway.getSnapshot();
+      setSnapshot(nextSnapshot);
+      setPreferences(resetPreferences());
+      navigate("home");
+    } catch (caught) {
+      setDemoMessage(caught instanceof Error ? caught.message : "데모 사용자를 초기화하지 못했어요.");
+    } finally {
+      setDemoResetting(false);
+    }
   };
 
   const catchFromHome = async () => {
@@ -139,8 +153,9 @@ export function App() {
     return (
       <Onboarding
         initialSea={snapshot.seaId}
-        onComplete={async (seaId) => {
-          const nextSnapshot = await oceanGateway.updateSea(seaId);
+        initialCountryCode={snapshot.countryCode}
+        onComplete={async (countryCode, seaId) => {
+          const nextSnapshot = await oceanGateway.completeOnboarding(countryCode, seaId);
           setSnapshot(nextSnapshot);
           updatePreferences({ ...preferences, onboarded: true });
         }}
@@ -202,7 +217,9 @@ export function App() {
 
   return (
     <AppShell
-      controlsLocked={sceneBusy || catching}
+      controlsLocked={sceneBusy || catching || demoResetting}
+      demoResetting={demoResetting}
+      demoMessage={demoMessage}
       onHome={() => navigate("home")}
       onReplayTutorial={replayTutorial}
     >

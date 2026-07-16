@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { ensureSupabaseSession } from "@/features/ocean/services/supabase-client";
+import { clearSupabaseSession, ensureSupabaseSession } from "@/features/ocean/services/supabase-client";
 import {
   OceanError,
   type BottleDraft,
@@ -14,13 +14,16 @@ interface DatabaseBottleContent {
   body: string;
   dateLabel?: string | null;
   signature?: string | null;
+  senderCountryCode?: string | null;
 }
 
 interface DatabaseSnapshot {
   seaId: SeaId;
+  countryCode?: string | null;
   remainingSends: number;
   nextCatchAt: string | null;
   bottleAvailable: boolean;
+  waitingForNews?: boolean;
   activeBottle: (DatabaseBottleContent & {
     opened: boolean;
     caughtAt: string;
@@ -37,6 +40,7 @@ const ERROR_CODES = [
   "NO_BOTTLE",
   "BOTTLE_GONE",
   "ACTIVE_BOTTLE",
+  "ADMIN_ACCOUNT",
   "INVALID_DRAFT",
 ] as const;
 
@@ -75,8 +79,26 @@ export class SupabaseOceanGateway implements OceanGateway {
     });
   }
 
+  async completeOnboarding(countryCode: string, seaId: SeaId): Promise<OceanSnapshot> {
+    return this.call("ocean_complete_onboarding", {
+      p_country_code: countryCode,
+      p_sea_id: seaId,
+    });
+  }
+
   async updateSea(seaId: SeaId): Promise<OceanSnapshot> {
     return this.call("ocean_update_sea", { p_sea_id: seaId });
+  }
+
+  async resetDemoUser(): Promise<void> {
+    await ensureSupabaseSession(this.client);
+    const { error } = await this.client.rpc("ocean_reset_demo_user");
+    if (error) {
+      const code = ERROR_CODES.find((candidate) => error.message.includes(candidate));
+      if (code) throw new OceanError(code, error.message.replace(`${code}:`, "").trim());
+      throw error;
+    }
+    await clearSupabaseSession(this.client);
   }
 
   private async call(functionName: string, args?: Record<string, unknown>): Promise<OceanSnapshot> {
@@ -104,6 +126,7 @@ export class SupabaseOceanGateway implements OceanGateway {
                 body: snapshot.activeBottle.body,
                 dateLabel: snapshot.activeBottle.dateLabel ?? undefined,
                 signature: snapshot.activeBottle.signature ?? undefined,
+                senderCountryCode: snapshot.activeBottle.senderCountryCode ?? undefined,
               }
             : undefined,
         }
@@ -111,15 +134,18 @@ export class SupabaseOceanGateway implements OceanGateway {
 
     return {
       seaId: snapshot.seaId,
+      countryCode: snapshot.countryCode ?? undefined,
       remainingSends: snapshot.remainingSends,
       nextCatchAt: snapshot.nextCatchAt ? new Date(snapshot.nextCatchAt).getTime() : null,
       bottleAvailable: snapshot.bottleAvailable,
+      waitingForNews: snapshot.waitingForNews ?? false,
       activeBottle,
       keptBottles: snapshot.keptBottles.map((message) => ({
         id: message.id,
         body: message.body,
         dateLabel: message.dateLabel ?? undefined,
         signature: message.signature ?? undefined,
+        senderCountryCode: message.senderCountryCode ?? undefined,
         keptAt: new Date(message.keptAt).getTime(),
         expiresAt: new Date(message.expiresAt).getTime(),
       })),

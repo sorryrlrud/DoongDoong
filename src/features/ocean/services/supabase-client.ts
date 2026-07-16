@@ -28,3 +28,9 @@ export const ensureSupabaseSession = async (client: SupabaseClient): Promise<Use
   sessionPromises.set(client, sessionPromise);
   return sessionPromise;
 };
+
+export const clearSupabaseSession = async (client: SupabaseClient): Promise<void> => {
+  sessionPromises.delete(client);
+  const { error } = await client.auth.signOut({ scope: "local" });
+  if (error) throw error;
+};

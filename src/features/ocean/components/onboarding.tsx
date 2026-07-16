@@ -1,15 +1,25 @@
 import { useState } from "react";
+import {
+  COUNTRY_OPTIONS,
+  countryName,
+  recommendedSeaForCountry,
+  suggestedCountryCode,
+} from "@/features/ocean/countries";
 import { HERO_IMAGE } from "@/shared/brand";
 import { SeaPicker } from "@/features/ocean/components/sea-picker";
 import type { SeaId } from "@/features/ocean/types/ocean";
 
 interface OnboardingProps {
   initialSea: SeaId;
-  onComplete: (seaId: SeaId) => Promise<void>;
+  initialCountryCode?: string;
+  onComplete: (countryCode: string, seaId: SeaId) => Promise<void>;
 }
 
-export function Onboarding({ initialSea, onComplete }: OnboardingProps) {
-  const [seaId, setSeaId] = useState<SeaId>(initialSea);
+export function Onboarding({ initialSea, initialCountryCode, onComplete }: OnboardingProps) {
+  const [countryCode, setCountryCode] = useState(() => initialCountryCode ?? suggestedCountryCode());
+  const [seaId, setSeaId] = useState<SeaId>(() =>
+    initialCountryCode ? initialSea : recommendedSeaForCountry(suggestedCountryCode()),
+  );
   const [accepted, setAccepted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -19,7 +29,7 @@ export function Onboarding({ initialSea, onComplete }: OnboardingProps) {
     setSubmitting(true);
     setError(null);
     try {
-      await onComplete(seaId);
+      await onComplete(countryCode, seaId);
     } catch {
       setError("시작하지 못했어요. 잠시 뒤 다시 시도해 주세요.");
     } finally {
@@ -44,9 +54,31 @@ export function Onboarding({ initialSea, onComplete }: OnboardingProps) {
             <li>받은 병은 30일까지만 보관</li>
           </ul>
 
+          <label className="onboarding-country" htmlFor="onboarding-country">
+            <span>어느 나라에서 바다를 열까요?</span>
+            <select
+              id="onboarding-country"
+              value={countryCode}
+              onChange={(event) => {
+                const nextCountryCode = event.target.value;
+                setCountryCode(nextCountryCode);
+                setSeaId(recommendedSeaForCountry(nextCountryCode));
+              }}
+            >
+              {COUNTRY_OPTIONS.map((country) => (
+                <option key={country.code} value={country.code}>
+                  {country.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
           <fieldset className="onboarding-sea">
             <legend>병을 건질 바다</legend>
             <SeaPicker value={seaId} name="onboarding-sea" label="병을 건질 바다" onChange={setSeaId} />
+            <p className="onboarding-sea__recommendation" aria-live="polite">
+              {countryName(countryCode)}에서 가까운 바다를 먼저 골랐어요. 원하면 바꿀 수 있어요.
+            </p>
           </fieldset>
 
           <label className="check-row">

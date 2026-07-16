@@ -1,0 +1,19 @@
+{
+  "name": "둥둥 — 세상 어딘가로, 둥둥.",
+  "short_name": "둥둥",
+  "description": "누군가에게 닿고, 답장 없이, 언젠가 사라지는 익명의 병편지",
+  "lang": "ko",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f7edcf",
+  "theme_color": "#f7edcf",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

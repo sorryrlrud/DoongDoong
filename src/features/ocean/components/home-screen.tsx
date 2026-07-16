@@ -51,6 +51,13 @@ export function HomeScreen({ snapshot, catching, onNavigate, onCatch }: HomeScre
         </button>
       ) : null}
 
+      {snapshot.waitingForNews && !snapshot.activeBottle ? (
+        <div className="waiting-news" role="status" aria-live="polite">
+          <span className="waiting-news__gull" aria-hidden="true">⌁⌁</span>
+          <span>새 소식을 기다리는 중 …</span>
+        </div>
+      ) : null}
+
       {snapshot.keptBottles.length > 0 ? (
         <button
           className="scene-object scene-object--kept"

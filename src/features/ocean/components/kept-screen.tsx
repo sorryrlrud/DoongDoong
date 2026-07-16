@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { AppRoute } from "@/app/use-hash-route";
 import { oceanGateway } from "@/features/ocean/services/runtime";
+import { countryName } from "@/features/ocean/countries";
 import type { BottleResolution, OceanSnapshot } from "@/features/ocean/types/ocean";
 import { formatExpiry } from "@/features/ocean/utils/time";
 import { PageHeading } from "@/shared/page-heading";
@@ -53,7 +54,10 @@ export function KeptScreen({ snapshot, now, onNavigate, onSnapshot }: KeptScreen
             <article className="kept-letter" key={bottle.id} dir="auto">
               <div className="kept-letter__top">
                 <span className="expiry-tag">{formatExpiry(bottle.expiresAt, now)}</span>
-                {bottle.dateLabel ? <time>{bottle.dateLabel}</time> : null}
+                <div>
+                  {bottle.senderCountryCode ? <span className="kept-letter__origin">발신 국가 · {countryName(bottle.senderCountryCode)}</span> : null}
+                  {bottle.dateLabel ? <time>{bottle.dateLabel}</time> : null}
+                </div>
               </div>
               <p>{bottle.body}</p>
               {bottle.signature ? <footer>{bottle.signature}</footer> : null}
