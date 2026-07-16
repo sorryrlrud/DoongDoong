@@ -1,25 +1,14 @@
 import { useState } from "react";
-import {
-  COUNTRY_OPTIONS,
-  countryName,
-  recommendedSeaForCountry,
-  suggestedCountryCode,
-} from "@/features/ocean/countries";
+import { COUNTRY_OPTIONS, suggestedCountryCode } from "@/features/ocean/countries";
 import { HERO_IMAGE } from "@/shared/brand";
-import { SeaPicker } from "@/features/ocean/components/sea-picker";
-import type { SeaId } from "@/features/ocean/types/ocean";
 
 interface OnboardingProps {
-  initialSea: SeaId;
   initialCountryCode?: string;
-  onComplete: (countryCode: string, seaId: SeaId, defaultSignature: string) => Promise<void>;
+  onComplete: (countryCode: string, defaultSignature: string) => Promise<void>;
 }
 
-export function Onboarding({ initialSea, initialCountryCode, onComplete }: OnboardingProps) {
+export function Onboarding({ initialCountryCode, onComplete }: OnboardingProps) {
   const [countryCode, setCountryCode] = useState(() => initialCountryCode ?? suggestedCountryCode());
-  const [seaId, setSeaId] = useState<SeaId>(() =>
-    initialCountryCode ? initialSea : recommendedSeaForCountry(suggestedCountryCode()),
-  );
   const [accepted, setAccepted] = useState(false);
   const [defaultSignature, setDefaultSignature] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -30,7 +19,7 @@ export function Onboarding({ initialSea, initialCountryCode, onComplete }: Onboa
     setSubmitting(true);
     setError(null);
     try {
-      await onComplete(countryCode, seaId, defaultSignature.trim());
+      await onComplete(countryCode, defaultSignature.trim());
     } catch {
       setError("시작하지 못했어요. 잠시 뒤 다시 시도해 주세요.");
     } finally {
@@ -60,11 +49,7 @@ export function Onboarding({ initialSea, initialCountryCode, onComplete }: Onboa
             <select
               id="onboarding-country"
               value={countryCode}
-              onChange={(event) => {
-                const nextCountryCode = event.target.value;
-                setCountryCode(nextCountryCode);
-                setSeaId(recommendedSeaForCountry(nextCountryCode));
-              }}
+              onChange={(event) => setCountryCode(event.target.value)}
             >
               {COUNTRY_OPTIONS.map((country) => (
                 <option key={country.code} value={country.code}>
@@ -73,14 +58,6 @@ export function Onboarding({ initialSea, initialCountryCode, onComplete }: Onboa
               ))}
             </select>
           </label>
-
-          <fieldset className="onboarding-sea">
-            <legend>병을 건질 바다</legend>
-            <SeaPicker value={seaId} name="onboarding-sea" label="병을 건질 바다" onChange={setSeaId} />
-            <p className="onboarding-sea__recommendation" aria-live="polite">
-              {countryName(countryCode)}에서 가까운 바다를 먼저 골랐어요. 원하면 바꿀 수 있어요.
-            </p>
-          </fieldset>
 
           <label className="onboarding-signature" htmlFor="onboarding-signature">
             <span>편지에 쓸 기본 서명 <small>선택</small></span>

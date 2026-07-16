@@ -33,7 +33,7 @@ export function SettingsScreen({
     try {
       onSnapshot(await oceanGateway.updateSea(seaId));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "바다를 바꾸지 못했어요.");
+      setError(caught instanceof Error ? caught.message : "기본 바다를 바꾸지 못했어요.");
     }
   };
 
@@ -48,15 +48,14 @@ export function SettingsScreen({
       <div className="settings-list">
         <section className="setting-section" aria-labelledby="setting-sea-title">
           <div>
-            <h2 id="setting-sea-title">병을 건질 바다</h2>
-            {snapshot.activeBottle ? <p>손에 든 병을 먼저 보내세요.</p> : null}
+            <h2 id="setting-sea-title">병을 띄울 기본 바다</h2>
+            <p>새 편지를 쓸 때 먼저 선택되는 바다예요. 병은 모든 바다에서 도착해요.</p>
           </div>
           <SeaPicker
             value={snapshot.seaId}
             name="settings-sea"
-            label="병을 건질 바다"
+            label="병을 띄울 기본 바다"
             wide
-            disabled={Boolean(snapshot.activeBottle)}
             onChange={updateSea}
           />
         </section>

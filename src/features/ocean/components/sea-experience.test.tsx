@@ -2,6 +2,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { CatchScreen } from "@/features/ocean/components/catch-screen";
 import { HomeScreen } from "@/features/ocean/components/home-screen";
+import { Onboarding } from "@/features/ocean/components/onboarding";
+import { SettingsScreen } from "@/features/ocean/components/settings-screen";
 import type { OceanSnapshot } from "@/features/ocean/types/ocean";
 
 const waitingSnapshot: OceanSnapshot = {
@@ -16,6 +18,36 @@ const waitingSnapshot: OceanSnapshot = {
 };
 
 describe("sea experience", () => {
+  it("does not ask for a receiving sea during onboarding", () => {
+    const html = renderToStaticMarkup(
+      <Onboarding
+        initialCountryCode="KR"
+        onComplete={async () => undefined}
+      />,
+    );
+
+    expect(html).not.toContain("병을 건질 바다");
+    expect(html).not.toContain("onboarding-sea");
+  });
+
+  it("describes the saved sea as a sending default only", () => {
+    const html = renderToStaticMarkup(
+      <SettingsScreen
+        snapshot={waitingSnapshot}
+        reduceMotion={false}
+        onReduceMotionChange={() => undefined}
+        defaultSignature=""
+        autoIncludeDate={false}
+        onWritingDefaultsChange={() => undefined}
+        onSnapshot={() => undefined}
+      />,
+    );
+
+    expect(html).toContain("병을 띄울 기본 바다");
+    expect(html).toContain("병은 모든 바다에서 도착해요.");
+    expect(html).not.toContain("병을 건질 바다");
+  });
+
   it("shows the gull waiting state only when the ocean has no message to receive", () => {
     const html = renderToStaticMarkup(
       <HomeScreen snapshot={waitingSnapshot} catching={false} onNavigate={() => undefined} onCatch={async () => undefined} onSeagull={() => undefined} />,

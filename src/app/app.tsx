@@ -147,10 +147,9 @@ export function App() {
   if (shouldShowOnboarding(preferences, snapshot.countryCode)) {
     return (
       <Onboarding
-        initialSea={snapshot.seaId}
         initialCountryCode={snapshot.countryCode}
-        onComplete={async (countryCode, seaId, defaultSignature) => {
-          const nextSnapshot = await oceanGateway.completeOnboarding(countryCode, seaId);
+        onComplete={async (countryCode, defaultSignature) => {
+          const nextSnapshot = await oceanGateway.completeOnboarding(countryCode, snapshot.seaId);
           setSnapshot(nextSnapshot);
           updatePreferences({ ...preferences, onboarded: true, defaultSignature });
         }}
