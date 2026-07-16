@@ -2346,16 +2346,17 @@ h3,
   z-index: 2;
   bottom: clamp(12px, 3vh, 42px);
   left: clamp(28px, 8vw, 130px);
-  display: grid;
-  width: clamp(145px, 17vw, 230px);
-  justify-items: center;
+  display: flex;
+  width: clamp(100px, 12vw, 170px);
+  align-items: center;
+  flex-direction: column;
   color: rgba(23, 63, 84, 0.78);
   animation: waiting-news-fade 700ms ease-out both;
 }
 
 .writing-rest > span {
-  z-index: 1;
-  margin-bottom: -14%;
+  margin-top: -16%;
+  order: 2;
   font-size: 11px;
   font-weight: 750;
   white-space: nowrap;
@@ -2365,6 +2366,7 @@ h3,
   display: block;
   width: 100%;
   height: auto;
+  order: 1;
   filter: drop-shadow(3px 5px 0 rgba(23, 63, 84, 0.16));
   transform-origin: center bottom;
   animation: crab-wait 4.8s ease-in-out infinite;
@@ -3245,7 +3247,7 @@ h3,
   .writing-rest {
     bottom: calc(2px + env(safe-area-inset-bottom));
     left: 3px;
-    width: clamp(122px, 38vw, 160px);
+    width: clamp(90px, 30vw, 120px);
   }
 
   .writing-rest > span {
