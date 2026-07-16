@@ -32,15 +32,16 @@ next delay = random(1 hour, max(1 hour, 7 days × 0.65 ^ drift count))
 ## 상태 흐름
 
 ```text
-draft → moderating → drifting → reserved → opened
-  opened → drifting
-  opened → kept → drifting
-  opened → kept → discarded / expired
-  opened → discarded
-  opened → quarantined(report)
+draft → moderating → drifting → available → delivered
+  delivered → drifting
+  delivered → kept → drifting
+  delivered → kept → deleted(expired)
+  delivered → deleted
+  delivered → reported
 ```
 
 닫힌 병이나 열린 병을 24시간 처리하지 않으면 운영판에서는 자동으로 다시 띄우는 것을 기본값으로 합니다.
+`deleted`와 `reported` 메시지는 사용자에게 다시 노출하지 않지만 운영 데이터베이스에는 남깁니다.
 
 ## 안전
 

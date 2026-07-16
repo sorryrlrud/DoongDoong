@@ -3,7 +3,6 @@ import { AppShell } from "@/app/app-shell";
 import { AdminScreen } from "@/features/admin/components/admin-screen";
 import {
   loadPreferences,
-  resetPreferences,
   savePreferences,
   type AppPreferences,
 } from "@/app/preferences";
@@ -29,8 +28,6 @@ export function App() {
   const [catching, setCatching] = useState(false);
   const [sceneBusy, setSceneBusy] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [demoResetting, setDemoResetting] = useState(false);
-  const [demoMessage, setDemoMessage] = useState<string | null>(null);
   const operationEpochRef = useRef(0);
 
   useEffect(() => {
@@ -81,24 +78,6 @@ export function App() {
   const updatePreferences = (next: AppPreferences) => {
     setPreferences(next);
     savePreferences(next);
-  };
-
-  const replayTutorial = async () => {
-    if (sceneBusy || catching || demoResetting) return;
-    setDemoResetting(true);
-    setDemoMessage(null);
-    operationEpochRef.current += 1;
-    try {
-      await oceanGateway.resetDemoUser();
-      const nextSnapshot = await oceanGateway.getSnapshot();
-      setSnapshot(nextSnapshot);
-      setPreferences(resetPreferences());
-      navigate("home");
-    } catch (caught) {
-      setDemoMessage(caught instanceof Error ? caught.message : "데모 사용자를 초기화하지 못했어요.");
-    } finally {
-      setDemoResetting(false);
-    }
   };
 
   const catchFromHome = async () => {
@@ -225,11 +204,8 @@ export function App() {
 
   return (
     <AppShell
-      controlsLocked={sceneBusy || catching || demoResetting}
-      demoResetting={demoResetting}
-      demoMessage={demoMessage}
+      controlsLocked={sceneBusy || catching}
       onHome={() => navigate("home")}
-      onReplayTutorial={replayTutorial}
     >
       {content}
     </AppShell>

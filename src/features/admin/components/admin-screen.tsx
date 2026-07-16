@@ -4,6 +4,7 @@ import type {
   AdminAuthInfo,
   AdminGateway,
   AdminMessageStatus,
+  AdminResetDirection,
 } from "@/features/admin/types/admin";
 import { PageHeading } from "@/shared/page-heading";
 
@@ -30,6 +31,20 @@ const getErrorMessage = (caught: unknown): string => {
   return "관리자 데이터를 불러오지 못했습니다.";
 };
 
+const STATUS_LABELS: Record<Exclude<AdminMessageStatus, "all">, string> = {
+  drifting: "표류중",
+  available: "도달 가능",
+  delivered: "도달함",
+  kept: "보관중",
+  deleted: "삭제됨",
+  reported: "신고됨",
+};
+
+interface ActionFeedback {
+  kind: "success" | "error";
+  message: string;
+}
+
 export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
   const [dashboard, setDashboard] = useState<AdminDashboard | null>(null);
   const [authInfo, setAuthInfo] = useState<AdminAuthInfo | null>(null);
@@ -38,6 +53,8 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [linkingGitHub, setLinkingGitHub] = useState(false);
+  const [actionKey, setActionKey] = useState<string | null>(null);
+  const [actionFeedback, setActionFeedback] = useState<ActionFeedback | null>(null);
 
   const loadDashboard = useCallback(async (
     nextQuery: string,
@@ -100,6 +117,61 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
     }
   };
 
+  const runAction = async (
+    key: string,
+    action: () => Promise<void>,
+    successMessage: string,
+  ) => {
+    if (actionKey) return;
+    setActionKey(key);
+    setActionFeedback(null);
+    try {
+      await action();
+      await loadDashboard(query, status);
+      setActionFeedback({ kind: "success", message: successMessage });
+    } catch (caught) {
+      setActionFeedback({ kind: "error", message: getErrorMessage(caught) });
+    } finally {
+      setActionKey(null);
+    }
+  };
+
+  const resetUser = (
+    userId: string,
+    direction: AdminResetDirection,
+  ) => {
+    if (!gateway) return;
+    if (direction === "receive" && !window.confirm(
+      "수신 제한을 초기화하면 현재 도달한 병은 다시 도달 가능한 상태가 됩니다. 계속할까요?",
+    )) return;
+    const label = direction === "send" ? "발신" : "수신";
+    void runAction(
+      `reset-${direction}-${userId}`,
+      () => gateway.resetUserLimits(userId, direction),
+      `${label} 제한을 초기화했습니다.`,
+    );
+  };
+
+  const deleteUser = (userId: string) => {
+    if (!gateway || !window.confirm(
+      `사용자 ${userId} 계정을 삭제할까요? 작성 메시지는 상태와 함께 데이터베이스에 보존됩니다.`,
+    )) return;
+    void runAction(
+      `delete-${userId}`,
+      () => gateway.deleteUser(userId),
+      "사용자 계정을 삭제했습니다. 작성 메시지는 보존되었습니다.",
+    );
+  };
+
+  const makeMessageAvailable = (messageId: string) => {
+    if (!gateway) return;
+    void runAction(
+      `available-${messageId}`,
+      () => gateway.makeMessageAvailable(messageId),
+      "메시지를 지금 도달 가능한 상태로 변경했습니다.",
+    );
+  };
+
   if (error && isPermissionError(error)) {
     return (
       <main className="admin-access">
@@ -140,7 +212,7 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
         <div>
           <p className="admin-kicker">DOONGDOONG ADMIN</p>
           <PageHeading>운영 현황</PageHeading>
-          <p>사용자와 병편지를 읽기 전용으로 확인합니다.</p>
+          <p>사용자와 병편지 상태를 확인하고 운영 작업을 수행합니다.</p>
         </div>
         <button className="button button--ghost button--small" type="button" onClick={onExit}>
           바다로 돌아가기
@@ -165,8 +237,10 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
             <article><span>전체 메시지</span><strong>{dashboard.stats.totalMessages.toLocaleString()}</strong></article>
             <article><span>오늘 메시지</span><strong>{dashboard.stats.messagesToday.toLocaleString()}</strong></article>
             <article><span>표류 중</span><strong>{dashboard.stats.driftingMessages.toLocaleString()}</strong></article>
-            <article className="admin-stat--alert"><span>신고 격리</span><strong>{dashboard.stats.quarantinedMessages.toLocaleString()}</strong></article>
-            <article><span>누적 신고</span><strong>{dashboard.stats.totalReports.toLocaleString()}</strong></article>
+            <article><span>도달 가능</span><strong>{dashboard.stats.availableMessages.toLocaleString()}</strong></article>
+            <article><span>도달함</span><strong>{dashboard.stats.deliveredMessages.toLocaleString()}</strong></article>
+            <article className="admin-stat--alert"><span>신고됨</span><strong>{dashboard.stats.reportedMessages.toLocaleString()}</strong></article>
+            <article><span>삭제 사용자</span><strong>{dashboard.stats.deletedUsers.toLocaleString()}</strong></article>
           </section>
 
           <form className="admin-filters" onSubmit={submitSearch}>
@@ -191,16 +265,26 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
               >
                 <option value="all">전체</option>
                 <option value="drifting">표류 중</option>
-                <option value="reserved">수신 예약</option>
+                <option value="available">도달 가능</option>
+                <option value="delivered">도달함</option>
                 <option value="kept">보관 중</option>
-                <option value="quarantined">신고 격리</option>
-                <option value="discarded">폐기</option>
+                <option value="deleted">삭제됨</option>
+                <option value="reported">신고됨</option>
               </select>
             </label>
             <button className="button button--primary button--small" type="submit" disabled={loading}>
               {loading ? "조회 중…" : "조회"}
             </button>
           </form>
+
+          {actionFeedback ? (
+            <div
+              className={`admin-action-feedback admin-action-feedback--${actionFeedback.kind}`}
+              role={actionFeedback.kind === "error" ? "alert" : "status"}
+            >
+              {actionFeedback.message}
+            </div>
+          ) : null}
 
           <section className="admin-section">
             <div className="admin-section__heading">
@@ -209,7 +293,7 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
             </div>
             <div className="admin-table-wrap">
               <table className="admin-table">
-                <thead><tr><th>UID</th><th>상태</th><th>바다</th><th>발송</th><th>작성 메시지</th><th>가입일</th></tr></thead>
+                <thead><tr><th>UID</th><th>상태</th><th>바다</th><th>발송</th><th>작성 메시지</th><th>가입일</th><th>관리</th></tr></thead>
                 <tbody>
                   {dashboard.users.map((user) => (
                     <tr key={user.id}>
@@ -219,9 +303,42 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
                       <td>{user.dailySendCount}/2</td>
                       <td>{user.authoredMessageCount}</td>
                       <td>{formatDate(user.createdAt)}</td>
+                      <td>
+                        <div className="admin-row-actions">
+                          <button
+                            className="button button--ghost button--tiny"
+                            type="button"
+                            disabled={Boolean(actionKey) || user.status === "deleted"}
+                            onClick={() => resetUser(user.id, "send")}
+                          >
+                            발신 초기화
+                          </button>
+                          <button
+                            className="button button--ghost button--tiny"
+                            type="button"
+                            disabled={Boolean(actionKey) || user.status === "deleted"}
+                            onClick={() => resetUser(user.id, "receive")}
+                          >
+                            수신 초기화
+                          </button>
+                          <button
+                            className="button button--danger button--tiny"
+                            type="button"
+                            disabled={
+                              Boolean(actionKey)
+                              || user.status === "deleted"
+                              || user.role === "admin"
+                              || user.id === authInfo?.userId
+                            }
+                            onClick={() => deleteUser(user.id)}
+                          >
+                            사용자 삭제
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
-                  {dashboard.users.length === 0 ? <tr><td colSpan={6}>조건에 맞는 사용자가 없습니다.</td></tr> : null}
+                  {dashboard.users.length === 0 ? <tr><td colSpan={7}>조건에 맞는 사용자가 없습니다.</td></tr> : null}
                 </tbody>
               </table>
             </div>
@@ -234,9 +351,11 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
             </div>
             <div className="admin-message-list">
               {dashboard.messages.map((message) => (
-                <article className={message.status === "quarantined" ? "admin-message admin-message--alert" : "admin-message"} key={message.id}>
+                <article className={message.status === "reported" ? "admin-message admin-message--alert" : "admin-message"} key={message.id}>
                   <header>
-                    <span className={`admin-badge admin-badge--${message.status}`}>{message.status}</span>
+                    <span className={`admin-badge admin-badge--${message.status}`}>
+                      {STATUS_LABELS[message.status as Exclude<AdminMessageStatus, "all">] ?? message.status}
+                    </span>
                     <time dateTime={message.createdAt}>{formatDate(message.createdAt)}</time>
                     {message.reportCount > 0 ? <strong>신고 {message.reportCount}</strong> : null}
                   </header>
@@ -252,6 +371,18 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
                       <div><dt>다음 도착 가능</dt><dd>{formatDate(message.availableAt)}</dd></div>
                     ) : null}
                   </dl>
+                  {message.status === "drifting" ? (
+                    <div className="admin-message__actions">
+                      <button
+                        className="button button--primary button--small"
+                        type="button"
+                        disabled={Boolean(actionKey)}
+                        onClick={() => makeMessageAvailable(message.id)}
+                      >
+                        지금 도달 가능하게
+                      </button>
+                    </div>
+                  ) : null}
                 </article>
               ))}
               {dashboard.messages.length === 0 ? <p className="admin-empty">조건에 맞는 메시지가 없습니다.</p> : null}

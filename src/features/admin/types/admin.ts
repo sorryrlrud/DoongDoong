@@ -1,19 +1,25 @@
 export type AdminMessageStatus =
   | "all"
   | "drifting"
-  | "reserved"
+  | "available"
+  | "delivered"
   | "kept"
-  | "discarded"
-  | "quarantined";
+  | "deleted"
+  | "reported";
+
+export type AdminResetDirection = "send" | "receive" | "both";
 
 export interface AdminStats {
   totalUsers: number;
   activeUsers: number;
   bannedUsers: number;
+  deletedUsers: number;
   totalMessages: number;
   messagesToday: number;
   driftingMessages: number;
-  quarantinedMessages: number;
+  availableMessages: number;
+  deliveredMessages: number;
+  reportedMessages: number;
   totalReports: number;
 }
 
@@ -24,8 +30,10 @@ export interface AdminUserRow {
   status: string;
   role: string;
   dailySendCount: number;
+  nextCatchAt: string | null;
   authoredMessageCount: number;
   createdAt: string;
+  deletedAt: string | null;
 }
 
 export interface AdminMessageRow {
@@ -62,4 +70,7 @@ export interface AdminGateway {
   getAuthInfo(): Promise<AdminAuthInfo>;
   beginGitHubLogin(): Promise<void>;
   getDashboard(filters?: AdminDashboardFilters): Promise<AdminDashboard>;
+  resetUserLimits(userId: string, direction: AdminResetDirection): Promise<void>;
+  makeMessageAvailable(messageId: string): Promise<void>;
+  deleteUser(userId: string): Promise<void>;
 }

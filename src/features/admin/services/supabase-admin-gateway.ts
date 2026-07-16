@@ -5,6 +5,7 @@ import type {
   AdminDashboardFilters,
   AdminAuthInfo,
   AdminGateway,
+  AdminResetDirection,
 } from "@/features/admin/types/admin";
 
 export class SupabaseAdminGateway implements AdminGateway {
@@ -45,5 +46,30 @@ export class SupabaseAdminGateway implements AdminGateway {
 
     if (error) throw error;
     return data as AdminDashboard;
+  }
+
+  async resetUserLimits(userId: string, direction: AdminResetDirection): Promise<void> {
+    await ensureSupabaseSession(this.client);
+    const { error } = await this.client.rpc("admin_reset_user_limits", {
+      p_target_user_id: userId,
+      p_direction: direction,
+    });
+    if (error) throw error;
+  }
+
+  async makeMessageAvailable(messageId: string): Promise<void> {
+    await ensureSupabaseSession(this.client);
+    const { error } = await this.client.rpc("admin_make_message_available", {
+      p_message_id: messageId,
+    });
+    if (error) throw error;
+  }
+
+  async deleteUser(userId: string): Promise<void> {
+    await ensureSupabaseSession(this.client);
+    const { error } = await this.client.rpc("admin_delete_user", {
+      p_target_user_id: userId,
+    });
+    if (error) throw error;
   }
 }

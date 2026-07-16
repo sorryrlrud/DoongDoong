@@ -24,7 +24,7 @@ Supabase Auth의 `auth.users.id`와 같은 UUID를 기본 키로 사용합니다
 
 ### public.messages
 
-본문, 서명, 바다, 작성자 UID와 함께 표류·예약·보관·격리 상태를 저장합니다. 수신자와 예약 만료 시각도 같은 행에 두어 현재는 두 테이블만으로 동작합니다.
+본문, 서명, 바다, 작성자 UID와 함께 `drifting`, `available`, `delivered`, `kept`, `deleted`, `reported` 상태를 저장합니다. 수신자와 도달 만료 시각도 같은 행에 두어 현재는 두 테이블만으로 동작합니다. 사용자가 버린 메시지는 `deleted`로 전환할 뿐 행을 삭제하지 않습니다.
 
 브라우저에는 두 테이블의 직접 읽기·쓰기 권한이 없습니다. `ocean_*` DB 함수만 `authenticated` 역할에 공개하며, 함수가 `auth.uid()`와 행 잠금을 확인합니다. 따라서 일반 사용자가 API 요청을 조작해도 다른 사용자의 UID나 미개봉 본문을 직접 조회할 수 없습니다.
 
@@ -36,28 +36,30 @@ Supabase Auth의 `auth.users.id`와 같은 UUID를 기본 키로 사용합니다
 4. `.env.example`을 `.env.local`로 복사하고 Project URL과 publishable key를 입력합니다.
 5. `npm run check`와 `npm run dev`로 확인합니다.
 
-환경변수가 없으면 앱은 기존 로컬 데모로 자동 실행됩니다. `service_role` 키와 DB 비밀번호는 브라우저, `.env`, GitHub Pages 빌드에 절대 넣지 않습니다. 클라이언트에는 publishable key만 사용합니다.
+환경변수가 없으면 앱은 설정 오류 화면을 표시합니다. `service_role` 키와 DB 비밀번호는 브라우저, `.env`, GitHub Pages 빌드에 절대 넣지 않습니다. 클라이언트에는 publishable key만 사용합니다.
 
 GitHub Pages 운영 빌드에는 저장소의 Actions secrets에 아래 값을 등록합니다.
 
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_PUBLISHABLE_KEY`
 
-### 202607160003 적용 전 주의
+### 202607160003 적용 이력
 
-`202607160003_country_origin_demo_reset.sql`은 국가·발신 국가·데모 UUID 초기화 기능을 추가합니다. 출시 전 데이터 정리를 위해 이 마이그레이션이 실행되는 한 번, 모든 기존 메시지와 관리자 이외의 Auth/프로필 계정을 삭제합니다. `public.users.role = 'admin'`인 관리자 계정은 유지됩니다. 운영 데이터를 보존해야 한다면 적용 전에 백업하거나 이 정리 구문을 별도 승인 절차로 분리하세요.
+`202607160003_country_origin_demo_reset.sql`은 국가·발신 국가 필드를 추가하면서 출시 전 데이터를 한 차례 정리한 과거 마이그레이션입니다. 신규 환경에서 전체 마이그레이션을 다시 적용하면 이 시점에 기존 메시지와 관리자 이외의 Auth/프로필 계정이 삭제되므로 주의해야 합니다.
 
-이후 `DEMO ↻`는 현재의 일반 익명 계정과 그 계정이 작성한 메시지를 삭제하고, 로컬 세션을 비운 뒤 다음 요청에서 새로운 익명 UUID를 생성합니다. 관리자 계정에는 이 동작을 허용하지 않습니다.
+`202607160007_admin_operations_and_message_states.sql`에서 데모 초기화 RPC를 제거하고 운영 상태 모델과 관리자 작업 RPC로 대체합니다.
+
+관리자 사용자 삭제는 Auth 계정을 제거하고 `public.users`에는 `deleted` tombstone을 남깁니다. 작성 메시지의 `author_id`와 본문은 유지되므로 사용자 삭제 뒤에도 메시지 감사 이력이 보존됩니다.
 
 ## 현재 두 테이블 설계의 범위
 
-신고 시 메시지를 즉시 `quarantined`로 바꾸고 `report_count`를 올릴 수 있지만, 신고 사유·신고자별 중복 방지·처리 이력은 보존하지 않습니다. 관리자 신고 검토를 구현할 때는 `reports`와 `admin_audit_logs`를 별도 테이블로 추가하는 것이 맞습니다. 번역 캐시나 AI 검사 결과도 운영 시 별도 비공개 테이블로 분리하는 편이 안전합니다.
+신고 시 메시지를 즉시 `reported`로 바꾸고 `report_count`를 올릴 수 있지만, 신고 사유·신고자별 중복 방지·처리 이력은 보존하지 않습니다. 관리자 신고 검토를 구현할 때는 `reports`와 `admin_audit_logs`를 별도 테이블로 추가하는 것이 맞습니다. 번역 캐시나 AI 검사 결과도 운영 시 별도 비공개 테이블로 분리하는 편이 안전합니다.
 
 익명 로그인은 브라우저 데이터를 지우면 계정을 복구할 수 없고 제재 우회가 쉽습니다. 공개 범위를 넓히기 전 CAPTCHA/Turnstile을 켜고, Google 또는 Apple 계정 연결을 추가해야 합니다.
 
 ## 관리자 조회
 
-`202607150001_admin_dashboard.sql` 마이그레이션은 `admin_dashboard` RPC를 추가합니다. 이 함수는 호출자의 `public.users.role`과 `status`를 서버에서 확인한 뒤에만 통계, UID 사용자 목록, 메시지 본문·발신 UID·수신 UID·신고 수를 반환합니다.
+`admin_dashboard`와 관리자 작업 RPC는 호출자의 `public.users.role`, `status`, GitHub identity를 서버에서 확인한 뒤에만 통계 조회나 변경을 수행합니다. 사용자 삭제, 발신·수신 초기화, 메시지 즉시 도달 가능 처리를 일반 사용자가 직접 호출할 수 없습니다.
 
 관리자 계정에는 GitHub identity가 연결되어야 합니다. 먼저 Supabase Authentication의 GitHub provider를 활성화한 뒤, 관리자 페이지 `#/admin`에서 GitHub로 로그인합니다. 연결이 끝난 뒤 표시되는 UID로 SQL Editor에서 다음 쿼리를 실행합니다.
 
@@ -67,7 +69,7 @@ set role = 'admin'
 where id = '관리자로 지정할 UID';
 ```
 
-현재 관리자 화면은 실수로 운영 데이터를 변경하지 않도록 읽기 전용입니다. 메시지 상태 변경이나 사용자 정지 기능을 추가할 때는 `admin_audit_logs` 테이블을 먼저 만들고 모든 변경을 기록해야 합니다.
+관리자 화면의 삭제는 메시지 행을 물리 삭제하지 않습니다. 사용자 삭제 시 Auth 로그인만 제거하고 프로필 tombstone과 작성 메시지를 보존합니다.
 
 ## 비용과 이전성
 

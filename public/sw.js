@@ -1,4 +1,4 @@
-const CACHE_NAME = "doongdoong-v2";
+const CACHE_NAME = "doongdoong-v3";
 const APP_SHELL = ["./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 const cacheAppShell = async () => {

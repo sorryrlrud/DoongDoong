@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { clearSupabaseSession, ensureSupabaseSession } from "@/features/ocean/services/supabase-client";
+import { ensureSupabaseSession } from "@/features/ocean/services/supabase-client";
 import {
   OceanError,
   type BottleDraft,
@@ -105,33 +105,6 @@ export class SupabaseOceanGateway implements OceanGateway {
 
   async updateSea(seaId: SeaId): Promise<OceanSnapshot> {
     return this.call("ocean_update_sea", { p_sea_id: seaId });
-  }
-
-  async resetDemoUser(): Promise<void> {
-    await ensureSupabaseSession(this.client);
-    const { error } = await this.client.rpc("ocean_reset_demo_user");
-    if (error) {
-      // The database deliberately refuses to delete administrator accounts. For
-      // the demo, keep that account signed in and reset only its demo limits.
-      if (error.message.includes("ADMIN_ACCOUNT")) {
-        const { error: resetError } = await this.client.rpc("ocean_reset_admin_demo_cooldowns");
-        if (resetError) {
-          // The browser bundle can reach production before its database
-          // migration. Keep the previous safe demo restart available then.
-          if (isMissingRpcFunction(resetError, "ocean_reset_admin_demo_cooldowns")) {
-            await clearSupabaseSession(this.client);
-            return;
-          }
-          throw resetError;
-        }
-        return;
-      }
-
-      const code = ERROR_CODES.find((candidate) => error.message.includes(candidate));
-      if (code) throw new OceanError(code, error.message.replace(`${code}:`, "").trim());
-      throw error;
-    }
-    await clearSupabaseSession(this.client);
   }
 
   private async call(functionName: string, args?: Record<string, unknown>): Promise<OceanSnapshot> {

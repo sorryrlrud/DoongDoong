@@ -56,7 +56,6 @@ export interface OceanGateway {
   resolveBottle(id: string, resolution: BottleResolution): Promise<OceanSnapshot>;
   completeOnboarding(countryCode: string, seaId: SeaId): Promise<OceanSnapshot>;
   updateSea(seaId: SeaId): Promise<OceanSnapshot>;
-  resetDemoUser(): Promise<void>;
 }
 
 export type OceanErrorCode =
