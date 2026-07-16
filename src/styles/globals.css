@@ -2361,7 +2361,7 @@ h3,
 .scene-object--bottle {
   bottom: clamp(190px, 29vh, 330px);
   left: 42%;
-  width: clamp(150px, 16vw, 220px);
+  width: clamp(105px, 11.2vw, 154px);
   animation: scene-shore-bob 4.8s ease-in-out infinite;
 }
 
@@ -2622,7 +2622,7 @@ h3,
   z-index: 3;
   bottom: clamp(48px, 8vh, 94px);
   left: 50%;
-  width: clamp(145px, 20vw, 245px);
+  width: clamp(102px, 14vw, 172px);
   aspect-ratio: 2 / 3;
   padding: 0;
   translate: -50% 0;
@@ -3189,7 +3189,7 @@ h3,
   .scene-object--bottle {
     bottom: 36vh;
     left: 35%;
-    width: clamp(118px, 34vw, 158px);
+    width: clamp(83px, 24vw, 111px);
   }
 
   .waiting-news {
@@ -3279,7 +3279,7 @@ h3,
 
   .catch-bottle {
     bottom: 12vh;
-    width: clamp(120px, 38vw, 168px);
+    width: clamp(84px, 27vw, 118px);
   }
 
   .catch-letter {
