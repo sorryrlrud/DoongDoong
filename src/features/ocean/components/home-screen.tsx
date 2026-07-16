@@ -52,7 +52,7 @@ export function HomeScreen({ snapshot, catching, onNavigate, onCatch }: HomeScre
         </button>
       ) : null}
 
-      {snapshot.waitingForNews && !snapshot.activeBottle ? (
+      {!snapshot.bottleAvailable && !snapshot.activeBottle ? (
         <div className="waiting-news" role="status" aria-live="polite">
           <img className="waiting-news__gull" src={SEAGULL_IMAGE} alt="" />
           <span>새 소식을 기다리는 중 …</span>

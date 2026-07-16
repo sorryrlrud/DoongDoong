@@ -25,6 +25,24 @@ describe("sea experience", () => {
     expect(html).toContain("waiting-news__gull");
   });
 
+  it("keeps the gull visible when a sea has a bottle but the catch cooldown is still active", () => {
+    const html = renderToStaticMarkup(
+      <HomeScreen
+        snapshot={{
+          ...waitingSnapshot,
+          nextCatchAt: Date.now() + 60_000,
+          waitingForNews: false,
+        }}
+        catching={false}
+        onNavigate={() => undefined}
+        onCatch={async () => undefined}
+      />,
+    );
+
+    expect(html).toContain("새 소식을 기다리는 중 …");
+    expect(html).toContain("waiting-news__gull");
+  });
+
   it("shows the sender's country after a bottle is opened", () => {
     const html = renderToStaticMarkup(
       <CatchScreen
@@ -49,5 +67,27 @@ describe("sea experience", () => {
     );
 
     expect(html).toContain("발신 국가 · 인도");
+  });
+
+  it("shows the regular bottle artwork before a caught bottle is opened", () => {
+    const html = renderToStaticMarkup(
+      <CatchScreen
+        snapshot={{
+          ...waitingSnapshot,
+          activeBottle: {
+            id: "message-id",
+            opened: false,
+            caughtAt: Date.now(),
+          },
+        }}
+        reduceMotion
+        onNavigate={() => undefined}
+        onSnapshot={() => undefined}
+        onBusyChange={() => undefined}
+      />,
+    );
+
+    expect(html).toContain("doongdoong-bottle-letter.png");
+    expect(html).not.toContain("doongdoong-bottle-arrived.png");
   });
 });
