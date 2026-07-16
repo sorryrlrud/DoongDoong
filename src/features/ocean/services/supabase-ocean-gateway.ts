@@ -111,6 +111,15 @@ export class SupabaseOceanGateway implements OceanGateway {
     await ensureSupabaseSession(this.client);
     const { error } = await this.client.rpc("ocean_reset_demo_user");
     if (error) {
+      // The database deliberately refuses to delete administrator accounts. For
+      // the demo, signing that account out has the same visible result as a
+      // reset: the next snapshot creates a fresh anonymous user, while the
+      // administrator account remains intact.
+      if (error.message.includes("ADMIN_ACCOUNT")) {
+        await clearSupabaseSession(this.client);
+        return;
+      }
+
       const code = ERROR_CODES.find((candidate) => error.message.includes(candidate));
       if (code) throw new OceanError(code, error.message.replace(`${code}:`, "").trim());
       throw error;

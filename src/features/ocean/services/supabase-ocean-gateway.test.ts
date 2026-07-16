@@ -37,4 +37,26 @@ describe("SupabaseOceanGateway", () => {
     });
     expect(rpc).toHaveBeenNthCalledWith(2, "ocean_update_sea", { p_sea_id: "pacific" });
   });
+
+  it("keeps an administrator account and signs out so the demo can restart as a new user", async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: null,
+      error: {
+        message: "ADMIN_ACCOUNT: 관리자 계정은 데모 초기화로 삭제할 수 없어요.",
+      },
+    });
+    const signOut = vi.fn().mockResolvedValue({ error: null });
+    const client = {
+      auth: {
+        getSession: vi.fn().mockResolvedValue({ data: { session: { user: { id: "admin-id" } } }, error: null }),
+        signOut,
+      },
+      rpc,
+    };
+    const gateway = new SupabaseOceanGateway(client as never);
+
+    await expect(gateway.resetDemoUser()).resolves.toBeUndefined();
+    expect(rpc).toHaveBeenCalledWith("ocean_reset_demo_user");
+    expect(signOut).toHaveBeenCalledWith({ scope: "local" });
+  });
 });

@@ -6,6 +6,7 @@ import {
   EMPTY_BOTTLE_IMAGE,
   GUIDE_SIGN_IMAGE,
   KEEPSAKE_IMAGE,
+  SEAGULL_IMAGE,
   WRITING_SET_IMAGE,
 } from "@/shared/brand";
 import { PageHeading } from "@/shared/page-heading";
@@ -53,7 +54,7 @@ export function HomeScreen({ snapshot, catching, onNavigate, onCatch }: HomeScre
 
       {snapshot.waitingForNews && !snapshot.activeBottle ? (
         <div className="waiting-news" role="status" aria-live="polite">
-          <span className="waiting-news__gull" aria-hidden="true">⌁⌁</span>
+          <img className="waiting-news__gull" src={SEAGULL_IMAGE} alt="" />
           <span>새 소식을 기다리는 중 …</span>
         </div>
       ) : null}

@@ -37,7 +37,7 @@ export function AppShell({
         type="button"
         onClick={() => void onReplayTutorial()}
         disabled={controlsLocked}
-        aria-label="현재 데모 사용자를 지우고 처음부터 다시 시작하기"
+        aria-label="새 데모 사용자로 처음부터 다시 시작하기"
       >
         {demoResetting ? "초기화 중…" : "DEMO ↻"}
       </button>

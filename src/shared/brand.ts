@@ -5,6 +5,7 @@ export const BOTTLE_WITH_LETTER_IMAGE = `${import.meta.env.BASE_URL}assets/doong
 export const EMPTY_BOTTLE_IMAGE = `${import.meta.env.BASE_URL}assets/doongdoong-bottle-empty.png`;
 export const KEEPSAKE_IMAGE = `${import.meta.env.BASE_URL}assets/doongdoong-keepsake.png`;
 export const GUIDE_SIGN_IMAGE = `${import.meta.env.BASE_URL}assets/doongdoong-guide-sign.png`;
+export const SEAGULL_IMAGE = `${import.meta.env.BASE_URL}assets/doongdoong-seagull.png`;
 
 export const SEA_LABELS = {
   pacific: "태평양",

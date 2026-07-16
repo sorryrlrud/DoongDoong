@@ -2349,12 +2349,9 @@ h3,
 
 .waiting-news__gull {
   display: block;
-  margin-bottom: 2px;
-  color: rgba(23, 63, 84, 0.72);
-  font-family: "Gaegu", cursive;
-  font-size: clamp(35px, 5vw, 57px);
-  font-weight: 700;
-  letter-spacing: -0.37em;
+  width: clamp(92px, 10vw, 142px);
+  height: auto;
+  margin-bottom: 4px;
   transform-origin: center;
   animation: gull-glide 5.5s ease-in-out infinite;
 }
@@ -3144,7 +3141,7 @@ h3,
   }
 
   .waiting-news__gull {
-    font-size: 39px;
+    width: 96px;
   }
 
   .scene-object--kept {
