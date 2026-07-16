@@ -319,7 +319,7 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
                 <thead><tr><th>UID</th><th>상태</th><th>바다</th><th>발송</th><th>작성 메시지</th><th>가입일</th><th>관리</th></tr></thead>
                 <tbody>
                   {dashboard.users.map((user) => (
-                    <tr className={actionKey?.endsWith(user.id) ? "admin-row--busy" : undefined} key={user.id}>
+                    <tr key={user.id}>
                       <td><code>{user.id}</code>{user.role === "admin" ? <small>ADMIN</small> : null}</td>
                       <td>{user.status}</td>
                       <td>{user.seaId}</td>
@@ -331,18 +331,22 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
                           <button
                             className="button button--ghost button--tiny"
                             type="button"
-                            disabled={Boolean(actionKey) || user.status === "deleted"}
-                            aria-busy={actionKey === `reset-send-${user.id}`}
-                            onClick={() => resetUser(user.id, "send")}
+                            disabled={user.status === "deleted"}
+                            onClick={(event) => {
+                              event.currentTarget.blur();
+                              resetUser(user.id, "send");
+                            }}
                           >
                             발신 초기화
                           </button>
                           <button
                             className="button button--ghost button--tiny"
                             type="button"
-                            disabled={Boolean(actionKey) || user.status === "deleted"}
-                            aria-busy={actionKey === `reset-receive-${user.id}`}
-                            onClick={() => resetUser(user.id, "receive")}
+                            disabled={user.status === "deleted"}
+                            onClick={(event) => {
+                              event.currentTarget.blur();
+                              resetUser(user.id, "receive");
+                            }}
                           >
                             수신 초기화
                           </button>
@@ -350,12 +354,13 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
                             className="button button--danger button--tiny"
                             type="button"
                             disabled={
-                              Boolean(actionKey)
-                              || user.role === "admin"
+                              user.role === "admin"
                               || user.id === authInfo?.userId
                             }
-                            aria-busy={actionKey === `delete-${user.id}`}
-                            onClick={() => deleteUser(user.id)}
+                            onClick={(event) => {
+                              event.currentTarget.blur();
+                              deleteUser(user.id);
+                            }}
                           >
                             완전 삭제
                           </button>
@@ -401,9 +406,10 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
                       <button
                         className="button button--primary button--small"
                         type="button"
-                        disabled={Boolean(actionKey)}
-                        aria-busy={actionKey === `available-${message.id}`}
-                        onClick={() => makeMessageAvailable(message.id)}
+                        onClick={(event) => {
+                          event.currentTarget.blur();
+                          makeMessageAvailable(message.id);
+                        }}
                       >
                         지금 도달 가능하게
                       </button>
@@ -411,9 +417,10 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
                     <button
                       className="button button--danger button--small"
                       type="button"
-                      disabled={Boolean(actionKey)}
-                      aria-busy={actionKey === `delete-message-${message.id}`}
-                      onClick={() => deleteMessage(message.id)}
+                      onClick={(event) => {
+                        event.currentTarget.blur();
+                        deleteMessage(message.id);
+                      }}
                     >
                       메시지 완전 삭제
                     </button>

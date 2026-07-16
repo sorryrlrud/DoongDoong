@@ -39,3 +39,8 @@ export const savePreferences = (preferences: AppPreferences): void => {
     // Preferences remain available for the current session when storage is blocked.
   }
 };
+
+export const shouldShowOnboarding = (
+  preferences: Pick<AppPreferences, "onboarded">,
+  countryCode?: string,
+): boolean => !preferences.onboarded || !countryCode;

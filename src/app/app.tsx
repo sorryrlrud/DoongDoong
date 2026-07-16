@@ -4,6 +4,7 @@ import { AdminScreen } from "@/features/admin/components/admin-screen";
 import {
   loadPreferences,
   savePreferences,
+  shouldShowOnboarding,
   type AppPreferences,
 } from "@/app/preferences";
 import { readAppRoute, useHashRoute } from "@/app/use-hash-route";
@@ -128,7 +129,10 @@ export function App() {
     return <AdminScreen gateway={adminGateway} onExit={() => navigate("home")} />;
   }
 
-  if (!preferences.onboarded) {
+  // A permanently deleted account may still have an unexpired browser token.
+  // The next snapshot recreates an empty profile, so missing server-side country
+  // metadata must take precedence over the old device's onboarding preference.
+  if (shouldShowOnboarding(preferences, snapshot.countryCode)) {
     return (
       <Onboarding
         initialSea={snapshot.seaId}

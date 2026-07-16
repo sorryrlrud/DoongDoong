@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { loadPreferences, resetPreferences, savePreferences } from "@/app/preferences";
+import {
+  loadPreferences,
+  resetPreferences,
+  savePreferences,
+  shouldShowOnboarding,
+} from "@/app/preferences";
 
 class MemoryStorage {
   private readonly values = new Map<string, string>();
@@ -52,5 +57,11 @@ describe("preferences", () => {
       defaultSignature: "",
       autoIncludeDate: false,
     });
+  });
+
+  it("restarts onboarding when a deleted account receives a fresh server profile", () => {
+    expect(shouldShowOnboarding({ onboarded: true }, undefined)).toBe(true);
+    expect(shouldShowOnboarding({ onboarded: true }, "KR")).toBe(false);
+    expect(shouldShowOnboarding({ onboarded: false }, "KR")).toBe(true);
   });
 });
