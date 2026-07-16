@@ -1,0 +1,40 @@
+import { describe, expect, it, vi } from "vitest";
+import { SupabaseOceanGateway } from "@/features/ocean/services/supabase-ocean-gateway";
+
+const snapshot = {
+  seaId: "pacific",
+  remainingSends: 2,
+  nextCatchAt: null,
+  bottleAvailable: false,
+  activeBottle: null,
+  keptBottles: [],
+};
+
+describe("SupabaseOceanGateway", () => {
+  it("uses the legacy sea RPC when the country onboarding migration is not deployed yet", async () => {
+    const rpc = vi
+      .fn()
+      .mockResolvedValueOnce({
+        data: null,
+        error: {
+          code: "PGRST202",
+          message: "Could not find the function public.ocean_complete_onboarding(p_country_code, p_sea_id)",
+        },
+      })
+      .mockResolvedValueOnce({ data: snapshot, error: null });
+    const client = {
+      auth: {
+        getSession: vi.fn().mockResolvedValue({ data: { session: { user: { id: "user-id" } } }, error: null }),
+      },
+      rpc,
+    };
+    const gateway = new SupabaseOceanGateway(client as never);
+
+    await expect(gateway.completeOnboarding("KR", "pacific")).resolves.toMatchObject({ seaId: "pacific" });
+    expect(rpc).toHaveBeenNthCalledWith(1, "ocean_complete_onboarding", {
+      p_country_code: "KR",
+      p_sea_id: "pacific",
+    });
+    expect(rpc).toHaveBeenNthCalledWith(2, "ocean_update_sea", { p_sea_id: "pacific" });
+  });
+});

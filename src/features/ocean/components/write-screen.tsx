@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import type { AppRoute } from "@/app/use-hash-route";
 import { oceanGateway, safetyProvider } from "@/features/ocean/services/runtime";
 import { SEA_OPTIONS, type OceanSnapshot, type SeaId } from "@/features/ocean/types/ocean";
 import { BEACH_IMAGE, BOTTLE_WITH_LETTER_IMAGE, EMPTY_BOTTLE_IMAGE } from "@/shared/brand";
 import { PageHeading } from "@/shared/page-heading";
+import { DRAFT_LENGTH_ERROR, hasValidDraft } from "@/features/ocean/utils/write-validation";
 
 interface WriteScreenProps {
   snapshot: OceanSnapshot;
@@ -34,9 +35,13 @@ export function WriteScreen({
   const [showCrisisHelp, setShowCrisisHelp] = useState(false);
   const sendingRef = useRef(false);
 
-  const bodyLength = useMemo(() => Array.from(body).length, [body]);
-  const trimmedBodyLength = useMemo(() => Array.from(body.trim()).length, [body]);
-  const canSend = trimmedBodyLength >= 10 && bodyLength <= 1000 && signature.length <= 20;
+  const canSend = hasValidDraft(body, signature);
+
+  const clearLengthErrorWhenValid = (nextBody: string, nextSignature: string) => {
+    if (hasValidDraft(nextBody, nextSignature)) {
+      setError((currentError) => currentError === DRAFT_LENGTH_ERROR ? null : currentError);
+    }
+  };
 
   useEffect(() => {
     if (snapshot.remainingSends === 0 && stage === "editing") onNavigate("home");
@@ -46,7 +51,7 @@ export function WriteScreen({
 
   const packAndLaunch = async () => {
     if (!canSend || checking || sendingRef.current) {
-      setError("편지는 10자 이상 1,000자 이하로 적어 주세요.");
+      setError(DRAFT_LENGTH_ERROR);
       return;
     }
 
@@ -149,7 +154,11 @@ export function WriteScreen({
         <textarea
           id="bottle-body"
           value={body}
-          onChange={(event) => setBody(event.target.value)}
+          onChange={(event) => {
+            const nextBody = event.target.value;
+            setBody(nextBody);
+            clearLengthErrorWhenValid(nextBody, signature);
+          }}
           placeholder="이름 없는 누군가에게…"
           maxLength={1000}
           rows={10}
@@ -169,7 +178,11 @@ export function WriteScreen({
           <input
             type="text"
             value={signature}
-            onChange={(event) => setSignature(event.target.value)}
+            onChange={(event) => {
+              const nextSignature = event.target.value;
+              setSignature(nextSignature);
+              clearLengthErrorWhenValid(body, nextSignature);
+            }}
             maxLength={20}
             placeholder="서명 (선택)"
             aria-label="서명"

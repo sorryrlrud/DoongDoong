@@ -44,6 +44,15 @@ const ERROR_CODES = [
   "INVALID_DRAFT",
 ] as const;
 
+const isMissingRpcFunction = (error: unknown, functionName: string): boolean =>
+  typeof error === "object"
+  && error !== null
+  && "code" in error
+  && "message" in error
+  && error.code === "PGRST202"
+  && typeof error.message === "string"
+  && error.message.includes(`public.${functionName}`);
+
 export class SupabaseOceanGateway implements OceanGateway {
   constructor(private readonly client: SupabaseClient) {}
 
@@ -80,10 +89,18 @@ export class SupabaseOceanGateway implements OceanGateway {
   }
 
   async completeOnboarding(countryCode: string, seaId: SeaId): Promise<OceanSnapshot> {
-    return this.call("ocean_complete_onboarding", {
-      p_country_code: countryCode,
-      p_sea_id: seaId,
-    });
+    try {
+      return await this.call("ocean_complete_onboarding", {
+        p_country_code: countryCode,
+        p_sea_id: seaId,
+      });
+    } catch (error) {
+      // Keep the deployed app usable until the accompanying migration reaches Supabase.
+      // The legacy RPC can still persist the selected sea; country metadata begins
+      // syncing automatically for newly onboarded users once the migration is applied.
+      if (!isMissingRpcFunction(error, "ocean_complete_onboarding")) throw error;
+      return this.updateSea(seaId);
+    }
   }
 
   async updateSea(seaId: SeaId): Promise<OceanSnapshot> {
