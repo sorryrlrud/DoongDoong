@@ -1,3 +1,5 @@
+import type { LanguageCode } from "@/i18n/languages";
+
 export const SEA_OPTIONS = [
   { id: "pacific", name: "태평양", shortName: "태평양" },
   { id: "atlantic", name: "대서양", shortName: "대서양" },
@@ -14,6 +16,9 @@ export interface BottleContent {
   dateLabel?: string;
   signature?: string;
   senderCountryCode?: string;
+  sourceLanguage?: LanguageCode;
+  displayLanguage?: LanguageCode;
+  isTranslated?: boolean;
 }
 
 export interface ActiveBottle {
@@ -31,6 +36,7 @@ export interface KeptBottle extends BottleContent {
 export interface OceanSnapshot {
   seaId: SeaId;
   countryCode?: string;
+  languageCode: LanguageCode;
   remainingSends: number;
   nextCatchAt: number | null;
   bottleAvailable: boolean;
@@ -44,6 +50,7 @@ export interface BottleDraft {
   seaId: SeaId;
   includeDate: boolean;
   signature?: string;
+  languageCode: LanguageCode;
 }
 
 export type BottleResolution = "redrift" | "keep" | "discard" | "report";
@@ -54,7 +61,13 @@ export interface OceanGateway {
   catchBottle(): Promise<OceanSnapshot>;
   openBottle(id: string): Promise<OceanSnapshot>;
   resolveBottle(id: string, resolution: BottleResolution): Promise<OceanSnapshot>;
-  completeOnboarding(countryCode: string, seaId: SeaId, defaultSignature: string): Promise<OceanSnapshot>;
+  completeOnboarding(
+    countryCode: string,
+    seaId: SeaId,
+    defaultSignature: string,
+    languageCode: LanguageCode,
+  ): Promise<OceanSnapshot>;
+  updateProfile(countryCode: string, languageCode: LanguageCode): Promise<OceanSnapshot>;
   updateDefaultSignature(defaultSignature: string): Promise<OceanSnapshot>;
   updateSea(seaId: SeaId): Promise<OceanSnapshot>;
 }

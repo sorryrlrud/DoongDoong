@@ -5,6 +5,8 @@ import { countryName } from "@/features/ocean/countries";
 import type { BottleResolution, OceanSnapshot } from "@/features/ocean/types/ocean";
 import { BEACH_IMAGE, BOTTLE_WITH_LETTER_IMAGE } from "@/shared/brand";
 import { PageHeading } from "@/shared/page-heading";
+import { useI18n } from "@/i18n/i18n";
+import { languageDisplayName } from "@/i18n/languages";
 
 interface CatchScreenProps {
   snapshot: OceanSnapshot;
@@ -25,6 +27,7 @@ export function CatchScreen({
   onSnapshot,
   onBusyChange,
 }: CatchScreenProps) {
+  const { t, languageCode } = useI18n();
   const [busy, setBusy] = useState(false);
   const [opening, setOpening] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,8 +53,8 @@ export function CatchScreen({
         wait(motionOff ? 0 : 680),
       ]);
       onSnapshot(nextSnapshot);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "병을 열지 못했어요.");
+    } catch {
+      setError(t("catch.openError"));
     } finally {
       setOpening(false);
       setBusy(false);
@@ -70,8 +73,8 @@ export function CatchScreen({
       onSnapshot(nextSnapshot);
       setConfirming(null);
       if (window.location.hash.replace(/^#\/?/, "") === "catch") onNavigate("home");
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "병을 처리하지 못했어요.");
+    } catch {
+      setError(t("catch.resolveError"));
     } finally {
       setBusy(false);
       onBusyChange(false);
@@ -92,7 +95,7 @@ export function CatchScreen({
       <section className="catch-stage">
         <img className="scene-background" src={BEACH_IMAGE} alt="" />
         <PageHeading className="sr-only">
-          주운 병 열어보기
+          {t("catch.heading")}
         </PageHeading>
 
         {error ? <div className="scene-alert" role="alert">{error}</div> : null}
@@ -102,7 +105,7 @@ export function CatchScreen({
           type="button"
           onClick={() => void openBottle()}
           disabled={busy}
-          aria-label="병을 열어 편지 꺼내기"
+          aria-label={t("catch.open")}
           aria-busy={opening}
         >
           <img src={BOTTLE_WITH_LETTER_IMAGE} alt="" />
@@ -114,10 +117,10 @@ export function CatchScreen({
           onClick={() => void resolveBottle("redrift")}
           disabled={busy}
         >
-          그대로 띄우기
+          {t("catch.untouched")}
         </button>
         <p className="sr-only" aria-live="polite">
-          {opening ? "병을 열고 있어요." : ""}
+          {opening ? t("catch.opening") : ""}
         </p>
       </section>
     );
@@ -132,42 +135,51 @@ export function CatchScreen({
     <section className="opened-letter-scene" onClick={returnToShore}>
       <img className="scene-background" src={BEACH_IMAGE} alt="" />
       <PageHeading className="sr-only">
-        받은 편지
+        {t("catch.received")}
       </PageHeading>
 
       {error ? <div className="scene-alert" role="alert">{error}</div> : null}
 
       <img className="opened-letter-scene__bottle" src={BOTTLE_WITH_LETTER_IMAGE} alt="" />
       <article className="catch-letter" dir="auto">
-        {content.senderCountryCode ? <p className="catch-letter__origin">발신 국가 · {countryName(content.senderCountryCode)}</p> : null}
+        {content.senderCountryCode ? (
+          <p className="catch-letter__origin">
+            {t("catch.origin", { country: countryName(content.senderCountryCode, languageCode) })}
+          </p>
+        ) : null}
+        {content.isTranslated && content.sourceLanguage ? (
+          <p className="catch-letter__translation">
+            {t("catch.translated", { language: languageDisplayName(content.sourceLanguage, languageCode) })}
+          </p>
+        ) : null}
         {content.dateLabel ? <time>{content.dateLabel}</time> : null}
         <p>{content.body}</p>
         {content.signature ? <footer>{content.signature}</footer> : null}
       </article>
 
-      <div className="letter-actions" aria-label="받은 편지 처리">
+      <div className="letter-actions" aria-label={t("catch.actions")}>
         <button type="button" onClick={() => void resolveBottle("redrift")} disabled={busy || Boolean(confirming)}>
-          다시 띄우기
+          {t("catch.redrift")}
         </button>
         <button type="button" onClick={() => void resolveBottle("keep")} disabled={busy || Boolean(confirming)}>
-          보관하기
+          {t("catch.keep")}
         </button>
       </div>
 
       <div className="scene-report">
         {confirming !== "report" ? (
           <button className="link-button" type="button" onClick={() => setConfirming("report")} disabled={busy || Boolean(confirming)}>
-            신고
+            {t("catch.report")}
           </button>
         ) : null}
       </div>
 
       {confirming === "report" ? (
-        <div className="scene-confirm" role="group" aria-label="신고 확인" aria-live="polite">
-          <p>신고하면 이 병은 즉시 사라져요.</p>
+        <div className="scene-confirm" role="group" aria-label={t("catch.reportConfirm")} aria-live="polite">
+          <p>{t("catch.reportWarning")}</p>
           <div>
-            <button type="button" onClick={() => setConfirming(null)}>취소</button>
-            <button type="button" onClick={() => void resolveBottle("report")} disabled={busy}>신고</button>
+            <button type="button" onClick={() => setConfirming(null)}>{t("common.cancel")}</button>
+            <button type="button" onClick={() => void resolveBottle("report")} disabled={busy}>{t("catch.report")}</button>
           </div>
         </div>
       ) : null}

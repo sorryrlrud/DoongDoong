@@ -1,3 +1,5 @@
+import { isLanguageCode, suggestedLanguageCode, type LanguageCode } from "@/i18n/languages";
+
 const PREFERENCES_KEY = "doongdoong.preferences.v1";
 
 export interface AppPreferences {
@@ -5,14 +7,16 @@ export interface AppPreferences {
   reduceMotion: boolean;
   defaultSignature: string;
   autoIncludeDate: boolean;
+  languageCode: LanguageCode;
 }
 
-const DEFAULT_PREFERENCES: AppPreferences = {
+const defaultPreferences = (): AppPreferences => ({
   onboarded: false,
   reduceMotion: false,
   defaultSignature: "",
   autoIncludeDate: false,
-};
+  languageCode: suggestedLanguageCode(),
+});
 
 export const resetPreferences = (): AppPreferences => {
   try {
@@ -20,15 +24,22 @@ export const resetPreferences = (): AppPreferences => {
   } catch {
     // The in-memory default remains usable when storage is blocked.
   }
-  return DEFAULT_PREFERENCES;
+  return defaultPreferences();
 };
 
 export const loadPreferences = (): AppPreferences => {
+  const defaults = defaultPreferences();
   try {
     const raw = window.localStorage.getItem(PREFERENCES_KEY);
-    return raw ? { ...DEFAULT_PREFERENCES, ...(JSON.parse(raw) as AppPreferences) } : DEFAULT_PREFERENCES;
+    if (!raw) return defaults;
+    const stored = JSON.parse(raw) as Partial<AppPreferences>;
+    return {
+      ...defaults,
+      ...stored,
+      languageCode: isLanguageCode(stored.languageCode) ? stored.languageCode : defaults.languageCode,
+    };
   } catch {
-    return DEFAULT_PREFERENCES;
+    return defaults;
   }
 };
 

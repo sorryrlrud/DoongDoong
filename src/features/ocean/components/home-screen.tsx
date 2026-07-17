@@ -11,6 +11,7 @@ import {
   WRITING_SET_IMAGE,
 } from "@/shared/brand";
 import { PageHeading } from "@/shared/page-heading";
+import { useI18n } from "@/i18n/i18n";
 
 interface HomeScreenProps {
   snapshot: OceanSnapshot;
@@ -21,10 +22,11 @@ interface HomeScreenProps {
 }
 
 export function HomeScreen({ snapshot, catching, onNavigate, onCatch, onSeagull }: HomeScreenProps) {
+  const { t } = useI18n();
   return (
-    <section className="shore-scene" aria-label="둥둥 해변">
+    <section className="shore-scene" aria-label={t("home.shore")}>
       <PageHeading className="sr-only">
-        둥둥 해변
+        {t("home.shore")}
       </PageHeading>
       <img className="scene-background" src={BEACH_IMAGE} alt="" />
 
@@ -34,14 +36,14 @@ export function HomeScreen({ snapshot, catching, onNavigate, onCatch, onSeagull 
           type="button"
           onClick={() => onNavigate("write")}
           disabled={catching}
-          aria-label="편지 쓰기"
+          aria-label={t("home.write")}
         >
           <img src={WRITING_SET_IMAGE} alt="" />
           <img className="scene-object__empty-bottle" src={EMPTY_BOTTLE_IMAGE} alt="" />
         </button>
       ) : (
         <div className="writing-rest" role="status">
-          <span>다음 편지지와 병을 준비하는 중 …</span>
+          <span>{t("home.writingRest")}</span>
           <img className="writing-rest__crab" src={CRAB_IMAGE} alt="" />
         </div>
       )}
@@ -52,7 +54,7 @@ export function HomeScreen({ snapshot, catching, onNavigate, onCatch, onSeagull 
           type="button"
           onClick={() => void onCatch()}
           disabled={catching}
-          aria-label={snapshot.activeBottle ? "건져 둔 병 보기" : "물가의 병 줍기"}
+          aria-label={snapshot.activeBottle ? t("home.heldBottle") : t("home.pickBottle")}
           aria-busy={catching}
         >
           <img src={ARRIVED_BOTTLE_IMAGE} alt="" />
@@ -65,10 +67,10 @@ export function HomeScreen({ snapshot, catching, onNavigate, onCatch, onSeagull 
           type="button"
           onClick={onSeagull}
           disabled={catching}
-          aria-label="갈매기 울음소리 듣기"
+          aria-label={t("home.seagull")}
         >
           <img className="waiting-news__gull" src={SEAGULL_IMAGE} alt="" />
-          <span>새 소식을 기다리는 중 …</span>
+          <span>{t("home.waiting")}</span>
         </button>
       ) : null}
 
@@ -78,7 +80,7 @@ export function HomeScreen({ snapshot, catching, onNavigate, onCatch, onSeagull 
           type="button"
           onClick={() => onNavigate("kept")}
           disabled={catching}
-          aria-label={`보관한 편지 ${snapshot.keptBottles.length}개 보기`}
+          aria-label={t("home.keptCount", { count: snapshot.keptBottles.length })}
         >
           <img src={KEEPSAKE_IMAGE} alt="" />
         </button>
@@ -89,13 +91,13 @@ export function HomeScreen({ snapshot, catching, onNavigate, onCatch, onSeagull 
         type="button"
         onClick={() => onNavigate("guide")}
         disabled={catching}
-        aria-label="둥둥 이용안내와 안전 안내 보기"
+        aria-label={t("home.guide")}
       >
         <img src={GUIDE_SIGN_IMAGE} alt="" />
       </button>
 
       <p className="sr-only" aria-live="polite">
-        {snapshot.bottleAvailable ? "물가에 주울 병이 있습니다." : "지금 물가에는 병이 없습니다."}
+        {snapshot.bottleAvailable ? t("home.available") : t("home.unavailable")}
       </p>
     </section>
   );

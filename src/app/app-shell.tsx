@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useI18n } from "@/i18n/i18n";
 
 interface AppShellProps {
   controlsLocked: boolean;
@@ -11,10 +12,11 @@ export function AppShell({
   onHome,
   children,
 }: AppShellProps) {
+  const { t } = useI18n();
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main-content">
-        본문으로 건너뛰기
+        {t("common.skip")}
       </a>
 
       <button
@@ -22,9 +24,9 @@ export function AppShell({
         type="button"
         onClick={onHome}
         disabled={controlsLocked}
-        aria-label="둥둥 해변으로 돌아가기"
+        aria-label={t("common.home")}
       >
-        둥둥
+        {t("brand.name")}
       </button>
       <main id="main-content" className="main-content">
         {children}

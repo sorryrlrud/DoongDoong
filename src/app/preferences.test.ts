@@ -25,6 +25,7 @@ class MemoryStorage {
 describe("preferences", () => {
   beforeEach(() => {
     vi.stubGlobal("window", { localStorage: new MemoryStorage() });
+    vi.stubGlobal("navigator", { languages: ["ko-KR"] });
   });
 
   afterEach(() => {
@@ -37,6 +38,7 @@ describe("preferences", () => {
       reduceMotion: true,
       defaultSignature: "밤의 여행자",
       autoIncludeDate: true,
+      languageCode: "ko",
     });
 
     expect(loadPreferences()).toEqual({
@@ -44,18 +46,21 @@ describe("preferences", () => {
       reduceMotion: true,
       defaultSignature: "밤의 여행자",
       autoIncludeDate: true,
+      languageCode: "ko",
     });
     expect(resetPreferences()).toEqual({
       onboarded: false,
       reduceMotion: false,
       defaultSignature: "",
       autoIncludeDate: false,
+      languageCode: "ko",
     });
     expect(loadPreferences()).toEqual({
       onboarded: false,
       reduceMotion: false,
       defaultSignature: "",
       autoIncludeDate: false,
+      languageCode: "ko",
     });
   });
 

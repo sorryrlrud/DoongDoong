@@ -3,6 +3,7 @@ import { SupabaseOceanGateway } from "@/features/ocean/services/supabase-ocean-g
 
 const snapshot = {
   seaId: "pacific",
+  languageCode: "ko",
   remainingSends: 2,
   nextCatchAt: null,
   bottleAvailable: false,
@@ -11,7 +12,7 @@ const snapshot = {
 };
 
 describe("SupabaseOceanGateway", () => {
-  it("uses the legacy onboarding RPC until default signatures are deployed", async () => {
+  it("uses the three-argument onboarding RPC until languages are deployed", async () => {
     const rpc = vi
       .fn()
       .mockResolvedValueOnce({
@@ -30,15 +31,17 @@ describe("SupabaseOceanGateway", () => {
     };
     const gateway = new SupabaseOceanGateway(client as never);
 
-    await expect(gateway.completeOnboarding("KR", "pacific", "밤의 여행자")).resolves.toMatchObject({ seaId: "pacific" });
+    await expect(gateway.completeOnboarding("KR", "pacific", "밤의 여행자", "ko")).resolves.toMatchObject({ seaId: "pacific" });
     expect(rpc).toHaveBeenNthCalledWith(1, "ocean_complete_onboarding", {
       p_country_code: "KR",
       p_sea_id: "pacific",
       p_default_signature: "밤의 여행자",
+      p_language_code: "ko",
     });
     expect(rpc).toHaveBeenNthCalledWith(2, "ocean_complete_onboarding", {
       p_country_code: "KR",
       p_sea_id: "pacific",
+      p_default_signature: "밤의 여행자",
     });
   });
 
@@ -56,6 +59,32 @@ describe("SupabaseOceanGateway", () => {
 
     expect(rpc).toHaveBeenCalledWith("ocean_update_default_signature", {
       p_default_signature: "밤의 여행자",
+    });
+  });
+
+  it("requests translation as soon as a bottle reaches its recipient", async () => {
+    const delivered = {
+      ...snapshot,
+      activeBottle: {
+        id: "00000000-0000-4000-8000-000000000001",
+        opened: false,
+        caughtAt: "2026-07-17T00:00:00.000Z",
+      },
+    };
+    const invoke = vi.fn().mockResolvedValue({ data: { translated: true }, error: null });
+    const client = {
+      auth: {
+        getSession: vi.fn().mockResolvedValue({ data: { session: { user: { id: "user-id" } } }, error: null }),
+      },
+      functions: { invoke },
+      rpc: vi.fn().mockResolvedValue({ data: delivered, error: null }),
+    };
+    const gateway = new SupabaseOceanGateway(client as never);
+
+    await gateway.catchBottle();
+
+    expect(invoke).toHaveBeenCalledWith("translate-message", {
+      body: { messageId: "00000000-0000-4000-8000-000000000001" },
     });
   });
 

@@ -1,13 +1,24 @@
 import { useState } from "react";
-import { COUNTRY_OPTIONS, suggestedCountryCode } from "@/features/ocean/countries";
+import { COUNTRY_OPTIONS, countryName, suggestedCountryCode } from "@/features/ocean/countries";
 import { HERO_IMAGE } from "@/shared/brand";
+import { useI18n } from "@/i18n/i18n";
+import { SUPPORTED_LANGUAGES, type LanguageCode } from "@/i18n/languages";
 
 interface OnboardingProps {
   initialCountryCode?: string;
-  onComplete: (countryCode: string, defaultSignature: string) => Promise<void>;
+  languageCode: LanguageCode;
+  onLanguageChange: (languageCode: LanguageCode) => void;
+  onComplete: (countryCode: string, defaultSignature: string, languageCode: LanguageCode) => Promise<void>;
 }
 
-export function Onboarding({ initialCountryCode, onComplete }: OnboardingProps) {
+export function Onboarding({
+  initialCountryCode,
+  languageCode,
+  onLanguageChange,
+  onComplete,
+}: OnboardingProps) {
+  const { t } = useI18n();
+  const [step, setStep] = useState<"locale" | "principles">("locale");
   const [countryCode, setCountryCode] = useState(() => initialCountryCode ?? suggestedCountryCode());
   const [accepted, setAccepted] = useState(false);
   const [defaultSignature, setDefaultSignature] = useState("");
@@ -19,9 +30,9 @@ export function Onboarding({ initialCountryCode, onComplete }: OnboardingProps) 
     setSubmitting(true);
     setError(null);
     try {
-      await onComplete(countryCode, defaultSignature.trim());
+      await onComplete(countryCode, defaultSignature.trim(), languageCode);
     } catch {
-      setError("시작하지 못했어요. 잠시 뒤 다시 시도해 주세요.");
+      setError(t("onboarding.error"));
     } finally {
       setSubmitting(false);
     }
@@ -31,62 +42,88 @@ export function Onboarding({ initialCountryCode, onComplete }: OnboardingProps) 
     <main className="onboarding">
       <img className="onboarding__art" src={HERO_IMAGE} alt="" />
       <div className="onboarding__panel">
-        <div className="onboarding__brand" aria-label="둥둥, DoongDoong">
-          <strong>둥둥</strong>
+        <div className="onboarding__brand" aria-label="DoongDoong">
+          <strong>{t("brand.name")}</strong>
           <span>DOONGDOONG</span>
         </div>
-        <section className="onboarding__copy" aria-labelledby="onboarding-title">
-          <p className="eyebrow">세상 어딘가로, 둥둥.</p>
-          <h1 id="onboarding-title">이름 없이 띄우고, 조용히 사라져요.</h1>
-          <ul className="onboarding-points" aria-label="둥둥 이용 원칙">
-            <li>답장·좋아요·읽음 표시 없음</li>
-            <li>띄운 뒤 확인·회수 불가</li>
-            <li>받은 병은 30일까지만 보관</li>
-          </ul>
 
-          <label className="onboarding-country" htmlFor="onboarding-country">
-            <span>어느 나라에서 띄운 메시지인가요?</span>
-            <select
-              id="onboarding-country"
-              value={countryCode}
-              onChange={(event) => setCountryCode(event.target.value)}
-            >
-              {COUNTRY_OPTIONS.map((country) => (
-                <option key={country.code} value={country.code}>
-                  {country.name}
-                </option>
-              ))}
-            </select>
-          </label>
+        {step === "locale" ? (
+          <section className="onboarding__copy" aria-labelledby="locale-title">
+            <h1 id="locale-title">{t("onboarding.selectTitle")}</h1>
+            <p>{t("onboarding.selectDescription")}</p>
+            <div className="onboarding-locale-grid">
+              <label htmlFor="onboarding-language">
+                <span>{t("onboarding.language")}</span>
+                <select
+                  id="onboarding-language"
+                  value={languageCode}
+                  onChange={(event) => onLanguageChange(event.target.value as LanguageCode)}
+                >
+                  {SUPPORTED_LANGUAGES.map((language) => (
+                    <option key={language.code} value={language.code}>{language.nativeName}</option>
+                  ))}
+                </select>
+              </label>
+              <label htmlFor="onboarding-country">
+                <span>{t("onboarding.country")}</span>
+                <select
+                  id="onboarding-country"
+                  value={countryCode}
+                  onChange={(event) => setCountryCode(event.target.value)}
+                >
+                  {COUNTRY_OPTIONS.map((country) => (
+                    <option key={country.code} value={country.code}>
+                      {countryName(country.code, languageCode)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </section>
+        ) : (
+          <section className="onboarding__copy" aria-labelledby="onboarding-title">
+            <p className="eyebrow">{t("onboarding.eyebrow")}</p>
+            <h1 id="onboarding-title">{t("onboarding.title")}</h1>
+            <ul className="onboarding-points" aria-label={t("onboarding.principles")}>
+              <li>{t("onboarding.rule1")}</li>
+              <li>{t("onboarding.rule2")}</li>
+              <li>{t("onboarding.rule3")}</li>
+            </ul>
 
-          <label className="onboarding-signature" htmlFor="onboarding-signature">
-            <span>편지에 쓸 기본 서명 <small>선택</small></span>
-            <input
-              id="onboarding-signature"
-              type="text"
-              value={defaultSignature}
-              onChange={(event) => setDefaultSignature(event.target.value)}
-              maxLength={20}
-              placeholder="예: 어느 밤의 여행자"
-            />
-          </label>
+            <label className="onboarding-signature" htmlFor="onboarding-signature">
+              <span>{t("onboarding.signature")} <small>{t("common.optional")}</small></span>
+              <input
+                id="onboarding-signature"
+                type="text"
+                value={defaultSignature}
+                onChange={(event) => setDefaultSignature(event.target.value)}
+                maxLength={20}
+                placeholder={t("onboarding.signaturePlaceholder")}
+              />
+            </label>
 
-          <label className="check-row">
-            <input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} />
-            <span>개인정보를 쓰지 않고, 수신자가 화면을 저장할 수 있음을 이해했어요.</span>
-          </label>
-        </section>
+            <label className="check-row">
+              <input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} />
+              <span>{t("onboarding.consent")}</span>
+            </label>
+          </section>
+        )}
 
         {error ? <div className="alert onboarding__error" role="alert">{error}</div> : null}
 
         <div className="onboarding__actions">
+          {step === "principles" ? (
+            <button className="button button--ghost" type="button" onClick={() => setStep("locale")}>
+              {t("common.back")}
+            </button>
+          ) : null}
           <button
             className="button button--primary"
             type="button"
-            disabled={!accepted || submitting}
-            onClick={handleComplete}
+            disabled={step === "principles" && (!accepted || submitting)}
+            onClick={() => step === "locale" ? setStep("principles") : void handleComplete()}
           >
-            {submitting ? "시작하는 중…" : "시작하기"}
+            {step === "locale" ? t("common.continue") : submitting ? t("onboarding.starting") : t("onboarding.start")}
           </button>
         </div>
       </div>

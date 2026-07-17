@@ -1,4 +1,6 @@
 import type { SeaId } from "@/features/ocean/types/ocean";
+import { localeForLanguage, type LanguageCode } from "@/i18n/languages";
+import { translate } from "@/i18n/i18n";
 
 export interface CountryOption {
   code: string;
@@ -81,9 +83,17 @@ const TIME_ZONE_COUNTRY_CODES: Record<string, string> = {
   "Europe/Paris": "FR",
 };
 
-export const countryName = (countryCode?: string | null): string => {
-  if (!countryCode) return "알 수 없는 곳";
-  return COUNTRY_BY_CODE.get(countryCode.toUpperCase())?.name ?? countryCode.toUpperCase();
+export const countryName = (countryCode?: string | null, languageCode: LanguageCode = "ko"): string => {
+  if (!countryCode) return translate(languageCode, "country.unknown");
+  const normalized = countryCode.toUpperCase();
+  if (normalized === "ZZ") return translate(languageCode, "country.other");
+  try {
+    return new Intl.DisplayNames([localeForLanguage(languageCode)], { type: "region" }).of(normalized)
+      ?? COUNTRY_BY_CODE.get(normalized)?.name
+      ?? normalized;
+  } catch {
+    return COUNTRY_BY_CODE.get(normalized)?.name ?? normalized;
+  }
 };
 
 export const recommendedSeaForCountry = (countryCode?: string | null): SeaId =>

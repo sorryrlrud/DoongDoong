@@ -7,7 +7,8 @@
 ## 지금 구현된 것
 
 - 모바일·데스크톱 반응형 웹 UI
-- 첫 이용 국가 선택과 모든 바다 대상 익명 병 수신
+- 첫 이용 국가·언어 분리 선택과 모든 바다 대상 익명 병 수신
+- 12개 UI 언어와 수신자 언어 기준 Azure 자동 번역·메시지별 캐시
 - 국가 기준 기본 발신 바다와 작성 시 바다 변경
 - 하루 최대 2병 작성, 선택 날짜·서명, 최종 확인
 - 연락처·URL·일부 위험 표현을 막는 보수적 로컬 사전 검사
@@ -50,7 +51,7 @@ src/
 └── styles/                      # 반응형 디자인 시스템
 ```
 
-`OceanGateway`, `SafetyProvider`, `TranslationProvider`가 외부 서비스 경계입니다. 운영 환경에서는 Supabase PostgreSQL RPC와 보수적 로컬 검사를 연결합니다.
+`OceanGateway`와 `SafetyProvider`가 외부 서비스 경계입니다. 운영 환경에서는 Supabase PostgreSQL RPC, Edge Function, Azure Translator와 보수적 로컬 검사를 연결합니다.
 
 ## 관리자 페이지
 
@@ -60,14 +61,13 @@ src/
 
 관리자가 사용자를 완전 삭제한 뒤 해당 브라우저가 다시 접속하면 서버의 빈 프로필을 감지해 기존 로컬 설정과 관계없이 국가·바다 선택 온보딩부터 다시 시작합니다.
 
-## AI 연결 판단
+## 번역
 
-2026-07-13 기준 권장 조합은 다음과 같습니다.
+앱 UI는 한국어, 영어, 일본어, 중국어 간체·번체, 스페인어, 프랑스어, 독일어, 포르투갈어, 러시아어, 아랍어, 힌디어 12개 언어를 정적 번역 사전으로 제공합니다. 국가와 언어는 별도로 저장합니다.
 
-- 유해성 분류: 무료인 [`omni-moderation-latest`](https://developers.openai.com/api/docs/models/omni-moderation-latest)
-- 개인정보·광고 등 서비스 정책 보조 분류 및 번역: 저비용 [`gpt-5-nano`](https://developers.openai.com/api/docs/models/gpt-5-nano)
+편지 원문 언어는 최초 작성자의 설정 언어로 고정됩니다. 수신자에게 병이 도달할 때 Supabase Edge Function이 Azure Translator를 호출하며, 결과는 `message_id + target_language` 기준으로 캐시합니다. 다시 띄워도 원문과 기존 번역은 유지되고, 다음 수신자의 언어 캐시만 조회하거나 추가합니다.
 
-API 키는 정적 웹 번들에 넣지 않습니다. Firebase Function 같은 서버 환경의 Secret Manager에서만 읽어야 하며, ChatGPT 구독과 API 과금은 별개입니다. 현재 Pages 체험판에서는 AI 호출과 번역 UI를 노출하지 않습니다.
+Azure 키는 정적 웹 번들에 넣지 않고 Supabase Edge Function secret으로만 관리합니다. 번역 서비스가 잠시 실패하면 원문을 보여 주며, 병을 열 때 한 번 더 캐시 생성을 시도합니다.
 
 ## 그래픽
 

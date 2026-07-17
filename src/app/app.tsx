@@ -20,13 +20,47 @@ import type { OceanSnapshot } from "@/features/ocean/types/ocean";
 import { BEACH_IMAGE } from "@/shared/brand";
 import { playIncomingWave, playSeagullCall } from "@/features/ocean/services/ocean-audio";
 import { recommendedSeaForCountry } from "@/features/ocean/countries";
+import { I18nProvider, useI18n } from "@/i18n/i18n";
+import type { LanguageCode } from "@/i18n/languages";
 
 const wait = (duration: number) => new Promise((resolve) => window.setTimeout(resolve, duration));
 
+interface AppExperienceProps {
+  preferences: AppPreferences;
+  updatePreferences: (next: AppPreferences) => void;
+  syncLanguage: (languageCode: LanguageCode) => void;
+}
+
 export function App() {
+  const [preferences, setPreferences] = useState<AppPreferences>(loadPreferences);
+  const updatePreferences = useCallback((next: AppPreferences) => {
+    setPreferences(next);
+    savePreferences(next);
+  }, []);
+  const syncLanguage = useCallback((languageCode: LanguageCode) => {
+    setPreferences((current) => {
+      if (current.languageCode === languageCode) return current;
+      const next = { ...current, languageCode };
+      savePreferences(next);
+      return next;
+    });
+  }, []);
+
+  return (
+    <I18nProvider languageCode={preferences.languageCode}>
+      <AppExperience
+        preferences={preferences}
+        updatePreferences={updatePreferences}
+        syncLanguage={syncLanguage}
+      />
+    </I18nProvider>
+  );
+}
+
+function AppExperience({ preferences, updatePreferences, syncLanguage }: AppExperienceProps) {
+  const { t } = useI18n();
   const { route, navigate } = useHashRoute();
   const [snapshot, setSnapshot] = useState<OceanSnapshot | null>(null);
-  const [preferences, setPreferences] = useState<AppPreferences>(loadPreferences);
   const [now, setNow] = useState(Date.now);
   const [catching, setCatching] = useState(false);
   const [sceneBusy, setSceneBusy] = useState(false);
@@ -47,9 +81,12 @@ export function App() {
   useEffect(() => {
     oceanGateway
       .getSnapshot()
-      .then(setSnapshot)
-      .catch(() => setLoadError("바다 데이터를 준비할 수 없어요. 잠시 후 다시 시도해 주세요."));
-  }, []);
+      .then((nextSnapshot) => {
+        setSnapshot(nextSnapshot);
+        if (nextSnapshot.countryCode) syncLanguage(nextSnapshot.languageCode);
+      })
+      .catch(() => setLoadError(t("fatal.load")));
+  }, [syncLanguage, t]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -89,11 +126,6 @@ export function App() {
   const acceptSnapshot = useCallback((nextSnapshot: OceanSnapshot) => {
     if (operationEpochRef.current === operationEpoch) setSnapshot(nextSnapshot);
   }, [operationEpoch]);
-  const updatePreferences = (next: AppPreferences) => {
-    setPreferences(next);
-    savePreferences(next);
-  };
-
   const catchFromHome = async () => {
     if (catching || !snapshot?.bottleAvailable) return;
     setCatching(true);
@@ -118,11 +150,11 @@ export function App() {
   if (loadError) {
     return (
       <main className="fatal-state">
-        <strong>둥둥</strong>
-        <h1>바다를 열지 못했어요.</h1>
+        <strong>{t("brand.name")}</strong>
+        <h1>{t("fatal.title")}</h1>
         <p>{loadError}</p>
         <button className="button button--primary" type="button" onClick={() => window.location.reload()}>
-          다시 열기
+          {t("fatal.reload")}
         </button>
       </main>
     );
@@ -132,8 +164,8 @@ export function App() {
     return (
       <main className="loading-screen" aria-live="polite">
         <img src={BEACH_IMAGE} alt="" />
-        <strong>둥둥</strong>
-        <span>바다를 불러오는 중…</span>
+        <strong>{t("brand.name")}</strong>
+        <span>{t("loading.sea")}</span>
       </main>
     );
   }
@@ -149,14 +181,17 @@ export function App() {
     return (
       <Onboarding
         initialCountryCode={snapshot.countryCode}
-        onComplete={async (countryCode, defaultSignature) => {
+        languageCode={preferences.languageCode}
+        onLanguageChange={(languageCode) => updatePreferences({ ...preferences, languageCode })}
+        onComplete={async (countryCode, defaultSignature, languageCode) => {
           const nextSnapshot = await oceanGateway.completeOnboarding(
             countryCode,
             recommendedSeaForCountry(countryCode),
             defaultSignature,
+            languageCode,
           );
           setSnapshot(nextSnapshot);
-          updatePreferences({ ...preferences, onboarded: true, defaultSignature });
+          updatePreferences({ ...preferences, onboarded: true, defaultSignature, languageCode });
         }}
       />
     );
@@ -199,10 +234,16 @@ export function App() {
   } else if (route === "settings") {
     content = (
       <SettingsScreen
+        countryCode={snapshot.countryCode ?? "ZZ"}
+        languageCode={preferences.languageCode}
         reduceMotion={preferences.reduceMotion}
         onReduceMotionChange={(reduceMotion) => updatePreferences({ ...preferences, reduceMotion })}
         defaultSignature={preferences.defaultSignature}
         autoIncludeDate={preferences.autoIncludeDate}
+        onProfileChange={(nextSnapshot, languageCode) => {
+          setSnapshot(nextSnapshot);
+          updatePreferences({ ...preferences, languageCode });
+        }}
         onWritingDefaultsChange={(writingDefaults) => updatePreferences({
           ...preferences,
           ...writingDefaults,

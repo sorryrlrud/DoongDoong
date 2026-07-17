@@ -9,6 +9,7 @@ import type { OceanSnapshot } from "@/features/ocean/types/ocean";
 const waitingSnapshot: OceanSnapshot = {
   seaId: "pacific",
   countryCode: "KR",
+  languageCode: "ko",
   remainingSends: 2,
   nextCatchAt: null,
   bottleAvailable: false,
@@ -22,11 +23,14 @@ describe("sea experience", () => {
     const html = renderToStaticMarkup(
       <Onboarding
         initialCountryCode="KR"
+        languageCode="ko"
+        onLanguageChange={() => undefined}
         onComplete={async () => undefined}
       />,
     );
 
-    expect(html).toContain("어느 나라에서 띄운 메시지인가요?");
+    expect(html).toContain("국가와 언어를 선택해 주세요");
+    expect(html).toContain("한국어");
     expect(html).not.toContain("어느 나라에서 바다를 열까요?");
     expect(html).not.toContain("병을 건질 바다");
     expect(html).not.toContain("onboarding-sea");
@@ -35,10 +39,13 @@ describe("sea experience", () => {
   it("does not expose a default sea in settings", () => {
     const html = renderToStaticMarkup(
       <SettingsScreen
+        countryCode="KR"
+        languageCode="ko"
         reduceMotion={false}
         onReduceMotionChange={() => undefined}
         defaultSignature=""
         autoIncludeDate={false}
+        onProfileChange={() => undefined}
         onWritingDefaultsChange={() => undefined}
       />,
     );
@@ -53,7 +60,7 @@ describe("sea experience", () => {
       <HomeScreen snapshot={waitingSnapshot} catching={false} onNavigate={() => undefined} onCatch={async () => undefined} onSeagull={() => undefined} />,
     );
 
-    expect(html).toContain("새 소식을 기다리는 중 …");
+    expect(html).toContain("새 소식을 기다리는 중…");
     expect(html).toContain("waiting-news__gull");
   });
 
@@ -72,7 +79,7 @@ describe("sea experience", () => {
       />,
     );
 
-    expect(html).toContain("새 소식을 기다리는 중 …");
+    expect(html).toContain("새 소식을 기다리는 중…");
     expect(html).toContain("waiting-news__gull");
   });
 
@@ -87,7 +94,7 @@ describe("sea experience", () => {
       />,
     );
 
-    expect(html).toContain("다음 편지지와 병을 준비하는 중 …");
+    expect(html).toContain("다음 편지지와 병을 준비하는 중…");
     expect(html).toContain("doongdoong-crab.png");
     expect(html).not.toContain("doongdoong-writing-set.png");
   });

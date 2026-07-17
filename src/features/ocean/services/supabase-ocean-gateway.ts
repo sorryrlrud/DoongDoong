@@ -8,6 +8,7 @@ import {
   type OceanSnapshot,
   type SeaId,
 } from "@/features/ocean/types/ocean";
+import { localeForLanguage, normalizeLanguageCode, type LanguageCode } from "@/i18n/languages";
 
 interface DatabaseBottleContent {
   id: string;
@@ -15,11 +16,15 @@ interface DatabaseBottleContent {
   dateLabel?: string | null;
   signature?: string | null;
   senderCountryCode?: string | null;
+  sourceLanguage?: string | null;
+  displayLanguage?: string | null;
+  isTranslated?: boolean | null;
 }
 
 interface DatabaseSnapshot {
   seaId: SeaId;
   countryCode?: string | null;
+  languageCode?: string | null;
   remainingSends: number;
   nextCatchAt: string | null;
   bottleAvailable: boolean;
@@ -62,7 +67,7 @@ export class SupabaseOceanGateway implements OceanGateway {
 
   async sendBottle(draft: BottleDraft): Promise<OceanSnapshot> {
     const dateLabel = draft.includeDate
-      ? new Intl.DateTimeFormat("ko-KR", { dateStyle: "long" }).format(new Date())
+      ? new Intl.DateTimeFormat(localeForLanguage(draft.languageCode), { dateStyle: "long" }).format(new Date())
       : null;
 
     return this.call("ocean_send_message", {
@@ -74,10 +79,13 @@ export class SupabaseOceanGateway implements OceanGateway {
   }
 
   async catchBottle(): Promise<OceanSnapshot> {
-    return this.call("ocean_catch_message");
+    const snapshot = await this.call("ocean_catch_message");
+    if (snapshot.activeBottle) await this.ensureTranslation(snapshot.activeBottle.id);
+    return snapshot;
   }
 
   async openBottle(id: string): Promise<OceanSnapshot> {
+    await this.ensureTranslation(id);
     return this.call("ocean_open_message", { p_message_id: id });
   }
 
@@ -92,12 +100,14 @@ export class SupabaseOceanGateway implements OceanGateway {
     countryCode: string,
     seaId: SeaId,
     defaultSignature: string,
+    languageCode: LanguageCode,
   ): Promise<OceanSnapshot> {
     try {
       return await this.call("ocean_complete_onboarding", {
         p_country_code: countryCode,
         p_sea_id: seaId,
         p_default_signature: defaultSignature.trim() || null,
+        p_language_code: languageCode,
       });
     } catch (error) {
       // Keep the deployed app usable until the accompanying migration reaches Supabase.
@@ -107,8 +117,22 @@ export class SupabaseOceanGateway implements OceanGateway {
       return this.call("ocean_complete_onboarding", {
         p_country_code: countryCode,
         p_sea_id: seaId,
+        p_default_signature: defaultSignature.trim() || null,
       });
     }
+  }
+
+  async updateProfile(countryCode: string, languageCode: LanguageCode): Promise<OceanSnapshot> {
+    const snapshot = await this.call("ocean_update_profile", {
+      p_country_code: countryCode,
+      p_language_code: languageCode,
+    });
+    const messageIds = [
+      snapshot.activeBottle?.id,
+      ...snapshot.keptBottles.map((bottle) => bottle.id),
+    ].filter((messageId): messageId is string => Boolean(messageId));
+    await Promise.all(messageIds.map((messageId) => this.ensureTranslation(messageId)));
+    return messageIds.length > 0 ? this.getSnapshot() : snapshot;
   }
 
   async updateDefaultSignature(defaultSignature: string): Promise<OceanSnapshot> {
@@ -119,6 +143,19 @@ export class SupabaseOceanGateway implements OceanGateway {
 
   async updateSea(seaId: SeaId): Promise<OceanSnapshot> {
     return this.call("ocean_update_sea", { p_sea_id: seaId });
+  }
+
+  private async ensureTranslation(messageId: string): Promise<void> {
+    try {
+      await ensureSupabaseSession(this.client);
+      const { error } = await this.client.functions.invoke("translate-message", {
+        body: { messageId },
+      });
+      if (error) throw error;
+    } catch {
+      // Translation is an enhancement: the immutable original remains readable
+      // if Azure or the edge function is temporarily unavailable.
+    }
   }
 
   private async call(
@@ -155,6 +192,13 @@ export class SupabaseOceanGateway implements OceanGateway {
                 dateLabel: snapshot.activeBottle.dateLabel ?? undefined,
                 signature: snapshot.activeBottle.signature ?? undefined,
                 senderCountryCode: snapshot.activeBottle.senderCountryCode ?? undefined,
+                sourceLanguage: snapshot.activeBottle.sourceLanguage
+                  ? normalizeLanguageCode(snapshot.activeBottle.sourceLanguage)
+                  : undefined,
+                displayLanguage: snapshot.activeBottle.displayLanguage
+                  ? normalizeLanguageCode(snapshot.activeBottle.displayLanguage)
+                  : undefined,
+                isTranslated: snapshot.activeBottle.isTranslated ?? false,
               }
             : undefined,
         }
@@ -163,6 +207,7 @@ export class SupabaseOceanGateway implements OceanGateway {
     return {
       seaId: snapshot.seaId,
       countryCode: snapshot.countryCode ?? undefined,
+      languageCode: normalizeLanguageCode(snapshot.languageCode),
       remainingSends: snapshot.remainingSends,
       nextCatchAt: snapshot.nextCatchAt ? new Date(snapshot.nextCatchAt).getTime() : null,
       bottleAvailable: snapshot.bottleAvailable,
@@ -174,6 +219,9 @@ export class SupabaseOceanGateway implements OceanGateway {
         dateLabel: message.dateLabel ?? undefined,
         signature: message.signature ?? undefined,
         senderCountryCode: message.senderCountryCode ?? undefined,
+        sourceLanguage: message.sourceLanguage ? normalizeLanguageCode(message.sourceLanguage) : undefined,
+        displayLanguage: message.displayLanguage ? normalizeLanguageCode(message.displayLanguage) : undefined,
+        isTranslated: message.isTranslated ?? false,
         keptAt: new Date(message.keptAt).getTime(),
         expiresAt: new Date(message.expiresAt).getTime(),
       })),

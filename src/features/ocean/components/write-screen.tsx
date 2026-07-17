@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 import type { AppRoute } from "@/app/use-hash-route";
 import { oceanGateway, safetyProvider } from "@/features/ocean/services/runtime";
-import { SEA_OPTIONS, type OceanSnapshot, type SeaId } from "@/features/ocean/types/ocean";
+import { OceanError, SEA_OPTIONS, type OceanSnapshot, type SeaId } from "@/features/ocean/types/ocean";
 import { BEACH_IMAGE, BOTTLE_WITH_LETTER_IMAGE, EMPTY_BOTTLE_IMAGE } from "@/shared/brand";
 import { PageHeading } from "@/shared/page-heading";
-import { DRAFT_LENGTH_ERROR, hasValidDraft } from "@/features/ocean/utils/write-validation";
+import { hasValidDraft } from "@/features/ocean/utils/write-validation";
 import { playSplash } from "@/features/ocean/services/ocean-audio";
+import { useI18n } from "@/i18n/i18n";
+import type { MessageKey } from "@/i18n/messages/en";
 
 interface WriteScreenProps {
   snapshot: OceanSnapshot;
@@ -20,6 +22,13 @@ interface WriteScreenProps {
 type WriteStage = "editing" | "packing" | "launching";
 
 const wait = (duration: number) => new Promise((resolve) => window.setTimeout(resolve, duration));
+const SEA_MESSAGE_KEYS: Record<SeaId, MessageKey> = {
+  pacific: "sea.pacific",
+  atlantic: "sea.atlantic",
+  indian: "sea.indian",
+  arctic: "sea.arctic",
+  southern: "sea.southern",
+};
 
 export function WriteScreen({
   snapshot,
@@ -30,6 +39,7 @@ export function WriteScreen({
   onSnapshot,
   onBusyChange,
 }: WriteScreenProps) {
+  const { t, languageCode } = useI18n();
   const [body, setBody] = useState("");
   const [signature, setSignature] = useState(defaultSignature);
   const [includeDate, setIncludeDate] = useState(autoIncludeDate);
@@ -42,10 +52,11 @@ export function WriteScreen({
   const sendingRef = useRef(false);
 
   const canSend = hasValidDraft(body, signature);
+  const lengthError = t("write.lengthError");
 
   const clearLengthErrorWhenValid = (nextBody: string, nextSignature: string) => {
     if (hasValidDraft(nextBody, nextSignature)) {
-      setError((currentError) => currentError === DRAFT_LENGTH_ERROR ? null : currentError);
+      setError((currentError) => currentError === lengthError ? null : currentError);
     }
   };
 
@@ -56,16 +67,16 @@ export function WriteScreen({
   useEffect(() => () => onBusyChange(false), [onBusyChange]);
 
   useEffect(() => {
-    if (error !== DRAFT_LENGTH_ERROR) return;
+    if (error !== lengthError) return;
     const timer = window.setTimeout(() => {
-      setError((currentError) => currentError === DRAFT_LENGTH_ERROR ? null : currentError);
+      setError((currentError) => currentError === lengthError ? null : currentError);
     }, 2_600);
     return () => window.clearTimeout(timer);
-  }, [error]);
+  }, [error, lengthError]);
 
   const packAndLaunch = async () => {
     if (!canSend || checking || sendingRef.current) {
-      setError(DRAFT_LENGTH_ERROR);
+      setError(lengthError);
       return;
     }
 
@@ -77,7 +88,13 @@ export function WriteScreen({
     try {
       const safety = await safetyProvider.check(body, signature);
       if (!safety.safe) {
-        setError(safety.message ?? "이 글은 띄울 수 없어요. 내용을 다시 살펴봐 주세요.");
+        const safetyKey: Record<typeof safety.category, MessageKey> = {
+          "personal-info": "write.blockedPersonal",
+          sensitive: safety.showCrisisHelp ? "write.blockedCrisis" : "write.blockedSensitive",
+          spam: "write.blockedSpam",
+          ok: "write.blockedGeneric",
+        };
+        setError(t(safetyKey[safety.category]));
         setShowCrisisHelp(Boolean(safety.showCrisisHelp));
         return;
       }
@@ -92,6 +109,7 @@ export function WriteScreen({
         signature: signature.trim() || undefined,
         includeDate,
         seaId,
+        languageCode,
       });
 
       playSplash();
@@ -104,7 +122,11 @@ export function WriteScreen({
       }
     } catch (caught) {
       setStage("editing");
-      setError(caught instanceof Error ? caught.message : "병을 띄우지 못했어요. 다시 시도해 주세요.");
+      setError(caught instanceof OceanError && caught.code === "DAILY_LIMIT"
+        ? t("write.dailyUsed")
+        : caught instanceof OceanError && caught.code === "INVALID_DRAFT"
+          ? lengthError
+          : t("write.sendError"));
     } finally {
       sendingRef.current = false;
       setChecking(false);
@@ -114,7 +136,7 @@ export function WriteScreen({
 
   const requestSendConfirmation = () => {
     if (!canSend || checking || stage !== "editing") {
-      setError(DRAFT_LENGTH_ERROR);
+      setError(lengthError);
       return;
     }
 
@@ -126,7 +148,7 @@ export function WriteScreen({
     return (
       <section className="shore-scene">
         <img className="scene-background" src={BEACH_IMAGE} alt="" />
-        <PageHeading className="sr-only">오늘 띄울 편지는 모두 사용했어요.</PageHeading>
+        <PageHeading className="sr-only">{t("write.dailyUsed")}</PageHeading>
       </section>
     );
   }
@@ -136,7 +158,7 @@ export function WriteScreen({
       <section className="launch-scene" aria-live="polite">
         <img className="scene-background" src={BEACH_IMAGE} alt="" />
         <img className="launch-bottle" src={BOTTLE_WITH_LETTER_IMAGE} alt="" />
-        <PageHeading className="sr-only">병이 바다로 떠나고 있어요.</PageHeading>
+        <PageHeading className="sr-only">{t("write.launching")}</PageHeading>
       </section>
     );
   }
@@ -152,14 +174,14 @@ export function WriteScreen({
     >
       <img className="scene-background" src={BEACH_IMAGE} alt="" />
       <PageHeading className="sr-only">
-        편지를 써서 병에 담기
+        {t("write.heading")}
       </PageHeading>
 
       {error ? (
         <div className="scene-alert" role="alert">
           <strong>{error}</strong>
           {showCrisisHelp ? (
-            <span>당장 위험하다면 가까운 사람이나 지역 응급전화에 지금 도움을 요청해 주세요.</span>
+            <span>{t("write.crisisHelp")}</span>
           ) : null}
         </div>
       ) : null}
@@ -167,14 +189,14 @@ export function WriteScreen({
       <form
         id="bottle-letter-form"
         className="write-paper"
-        aria-label="병에 담을 편지"
+        aria-label={t("write.form")}
         onSubmit={(event) => {
           event.preventDefault();
           requestSendConfirmation();
         }}
       >
         <label className="sr-only" htmlFor="bottle-body">
-          편지 내용
+          {t("write.body")}
         </label>
         <textarea
           id="bottle-body"
@@ -184,7 +206,7 @@ export function WriteScreen({
             setBody(nextBody);
             clearLengthErrorWhenValid(nextBody, signature);
           }}
-          placeholder="이름 없는 누군가에게…"
+          placeholder={t("write.placeholder")}
           maxLength={1000}
           rows={10}
           disabled={checking || stage !== "editing"}
@@ -198,7 +220,7 @@ export function WriteScreen({
               onChange={(event) => setIncludeDate(event.target.checked)}
               disabled={checking || stage !== "editing"}
             />
-            <span>오늘 날짜</span>
+            <span>{t("write.today")}</span>
           </label>
           <input
             type="text"
@@ -209,25 +231,25 @@ export function WriteScreen({
               clearLengthErrorWhenValid(body, nextSignature);
             }}
             maxLength={20}
-            placeholder="서명 (선택)"
-            aria-label="서명"
+            placeholder={t("write.signature")}
+            aria-label={t("write.signature")}
             disabled={checking || stage !== "editing"}
           />
           <select
             value={seaId}
             onChange={(event) => setSeaId(event.target.value as SeaId)}
-            aria-label="띄울 바다"
+            aria-label={t("write.sea")}
             disabled={checking || stage !== "editing"}
           >
             {SEA_OPTIONS.map((sea) => (
               <option key={sea.id} value={sea.id}>
-                {sea.name}
+                {t(SEA_MESSAGE_KEYS[sea.id])}
               </option>
             ))}
           </select>
         </div>
 
-        <p className="write-guardrail">개인정보 금지 · 띄운 뒤 회수 불가</p>
+        <p className="write-guardrail">{t("write.guardrail")}</p>
       </form>
 
       <span className="packing-sheet" aria-hidden="true" />
@@ -236,7 +258,7 @@ export function WriteScreen({
         type="submit"
         form="bottle-letter-form"
         disabled={checking || stage !== "editing"}
-        aria-label={checking ? "편지 안전 확인 중" : "편지를 병에 담아 바다에 띄우기"}
+        aria-label={checking ? t("write.checking") : t("write.launch")}
         aria-busy={checking || stage === "packing"}
       >
         <img className="write-bottle__empty" src={EMPTY_BOTTLE_IMAGE} alt="" />
@@ -244,7 +266,7 @@ export function WriteScreen({
       </button>
 
       <p className="sr-only" aria-live="polite">
-        {stage === "packing" ? "편지를 병에 담고 있어요." : ""}
+        {stage === "packing" ? t("write.packing") : ""}
       </p>
 
       {confirmingSend ? (
@@ -263,11 +285,11 @@ export function WriteScreen({
             aria-describedby="send-dialog-description"
           >
             <div className="send-dialog__body">
-              <h2 id="send-dialog-title">이 병을 띄울까요?</h2>
-              <p id="send-dialog-description">띄워보낸 병은 수정할 수 없어요. 보낼까요?</p>
+              <h2 id="send-dialog-title">{t("write.confirmTitle")}</h2>
+              <p id="send-dialog-description">{t("write.confirmDescription")}</p>
               <div className="send-dialog__actions">
                 <button className="button button--ghost" type="button" onClick={() => setConfirmingSend(false)} autoFocus>
-                  취소
+                  {t("common.cancel")}
                 </button>
                 <button
                   className="button button--primary"
@@ -277,7 +299,7 @@ export function WriteScreen({
                     void packAndLaunch();
                   }}
                 >
-                  보내기
+                  {t("write.send")}
                 </button>
               </div>
             </div>
