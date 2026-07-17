@@ -31,6 +31,7 @@ describe("sea experience", () => {
 
     expect(html).toContain("국가와 언어를 선택해 주세요");
     expect(html).toContain("한국어");
+    expect(html).not.toContain("국가는 병이 출발한 곳을");
     expect(html).not.toContain("어느 나라에서 바다를 열까요?");
     expect(html).not.toContain("병을 건질 바다");
     expect(html).not.toContain("onboarding-sea");

@@ -50,7 +50,6 @@ export function Onboarding({
         {step === "locale" ? (
           <section className="onboarding__copy" aria-labelledby="locale-title">
             <h1 id="locale-title">{t("onboarding.selectTitle")}</h1>
-            <p>{t("onboarding.selectDescription")}</p>
             <div className="onboarding-locale-grid">
               <label htmlFor="onboarding-language">
                 <span>{t("onboarding.language")}</span>

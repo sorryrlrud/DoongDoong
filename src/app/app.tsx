@@ -265,6 +265,7 @@ function AppExperience({ preferences, updatePreferences, syncLanguage }: AppExpe
   return (
     <AppShell
       controlsLocked={sceneBusy || catching}
+      solidHeader={route === "guide" || route === "settings" || route === "kept"}
       onHome={() => route === "home" ? window.location.reload() : navigate("home")}
     >
       {content}
