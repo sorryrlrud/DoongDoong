@@ -38,14 +38,21 @@ export class SupabaseAdminGateway implements AdminGateway {
     await ensureSupabaseSession(this.client);
     const query = filters.query?.trim() || null;
     const status = filters.status && filters.status !== "all" ? filters.status : null;
-    const { data, error } = await this.client.rpc("admin_dashboard", {
-      p_query: query,
-      p_status: status,
-      p_limit: 50,
-    });
+    const [dashboardResponse, usageResponse] = await Promise.all([
+      this.client.rpc("admin_dashboard", {
+        p_query: query,
+        p_status: status,
+        p_limit: 50,
+      }),
+      this.client.rpc("admin_service_usage"),
+    ]);
 
-    if (error) throw error;
-    return data as AdminDashboard;
+    if (dashboardResponse.error) throw dashboardResponse.error;
+    if (usageResponse.error) throw usageResponse.error;
+    return {
+      ...(dashboardResponse.data as Omit<AdminDashboard, "usage">),
+      usage: usageResponse.data,
+    } as AdminDashboard;
   }
 
   async resetUserLimits(userId: string, direction: AdminResetDirection): Promise<void> {

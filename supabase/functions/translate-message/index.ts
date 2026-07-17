@@ -11,12 +11,25 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
   headers: { ...corsHeaders, "Content-Type": "application/json" },
 });
 
+const recordUsage = async (
+  admin: Parameters<Parameters<typeof withSupabase>[1]>[1]["supabaseAdmin"],
+  metric: "edge_function_invocations" | "translated_characters",
+  quantity: number,
+) => {
+  await admin.rpc("record_service_usage", {
+    p_service: metric === "translated_characters" ? "azure_translator" : "supabase",
+    p_metric: metric,
+    p_quantity: quantity,
+  });
+};
+
 const translateMessage = withSupabase({ auth: "user" }, async (request, context) => {
   if (request.method !== "POST") return json({ error: "METHOD_NOT_ALLOWED" }, 405);
 
   const userId = String(context.jwtClaims?.sub ?? "");
   if (!userId) return json({ error: "AUTH_REQUIRED" }, 401);
   const admin = context.supabaseAdmin;
+  await recordUsage(admin, "edge_function_invocations", 1).catch(() => undefined);
 
   let messageId: string | undefined;
   try {
@@ -79,6 +92,9 @@ const translateMessage = withSupabase({ auth: "user" }, async (request, context)
   }>;
   const translatedBody = translationPayload[0]?.translations?.[0]?.text?.trim();
   if (!translatedBody) return json({ error: "TRANSLATION_FAILED" }, 502);
+
+  await recordUsage(admin, "translated_characters", Array.from(message.body).length)
+    .catch(() => undefined);
 
   const { error: cacheError } = await admin.from("message_translations").upsert({
     message_id: messageId,

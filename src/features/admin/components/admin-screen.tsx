@@ -5,6 +5,7 @@ import type {
   AdminGateway,
   AdminMessageStatus,
   AdminResetDirection,
+  AdminUsageMetric,
 } from "@/features/admin/types/admin";
 import { PageHeading } from "@/shared/page-heading";
 
@@ -55,6 +56,54 @@ const STATUS_LABELS: Record<Exclude<AdminMessageStatus, "all">, string> = {
   deleted: "삭제됨",
   reported: "신고됨",
 };
+
+const formatUsageValue = (value: number, unit: AdminUsageMetric["unit"]): string => {
+  if (unit === "bytes") {
+    if (value >= 1024 ** 3) return `${(value / 1024 ** 3).toFixed(2)} GB`;
+    return `${(value / 1024 ** 2).toFixed(1)} MB`;
+  }
+  if (unit === "characters") return `${value.toLocaleString()}자`;
+  return value.toLocaleString();
+};
+
+const usagePercent = ({ used, limit }: AdminUsageMetric): number =>
+  limit > 0 ? Math.min(100, Math.max(0, (used / limit) * 100)) : 0;
+
+interface UsageCardProps {
+  label: string;
+  metric: AdminUsageMetric;
+  note: string;
+}
+
+function UsageCard({ label, metric, note }: UsageCardProps) {
+  const percent = usagePercent(metric);
+  const remaining = Math.max(0, metric.limit - metric.used);
+
+  return (
+    <article className="admin-usage-card">
+      <header>
+        <span>{label}</span>
+        <strong>{percent.toFixed(percent < 1 && percent > 0 ? 1 : 0)}%</strong>
+      </header>
+      <div
+        className="admin-usage-card__meter"
+        role="progressbar"
+        aria-label={`${label} 사용률`}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(percent)}
+      >
+        <span style={{ width: `${percent}%` }} />
+      </div>
+      <dl>
+        <div><dt>사용</dt><dd>{formatUsageValue(metric.used, metric.unit)}</dd></div>
+        <div><dt>남음</dt><dd>{formatUsageValue(remaining, metric.unit)}</dd></div>
+        <div><dt>무료 한도</dt><dd>{formatUsageValue(metric.limit, metric.unit)}</dd></div>
+      </dl>
+      <p>{note}</p>
+    </article>
+  );
+}
 
 interface ActionFeedback {
   kind: "success" | "error";
@@ -286,6 +335,31 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
             <article><span>도달함</span><strong>{dashboard.stats.deliveredMessages.toLocaleString()}</strong></article>
             <article className="admin-stat--alert"><span>신고됨</span><strong>{dashboard.stats.reportedMessages.toLocaleString()}</strong></article>
             <article><span>삭제 사용자</span><strong>{dashboard.stats.deletedUsers.toLocaleString()}</strong></article>
+          </section>
+
+          <section className="admin-usage" aria-labelledby="admin-usage-title">
+            <div className="admin-section__heading">
+              <div>
+                <h2 id="admin-usage-title">무료 티어 사용량</h2>
+                <p>측정 시각 {formatDate(dashboard.usage.measuredAt)}</p>
+              </div>
+              <span>월간 항목은 매월 1일(UTC) 초기화</span>
+            </div>
+            <div className="admin-usage__group">
+              <h3>Supabase</h3>
+              <div className="admin-usage__grid">
+                <UsageCard label="Database" metric={dashboard.usage.supabase.databaseSize} note="현재 PostgreSQL 전체 크기" />
+                <UsageCard label="월간 활성 사용자" metric={dashboard.usage.supabase.monthlyActiveUsers} note="이번 달 로그인 기록 기준 추정치" />
+                <UsageCard label="Storage" metric={dashboard.usage.supabase.storageSize} note="Storage 객체 메타데이터 합계" />
+                <UsageCard label="Edge Function" metric={dashboard.usage.supabase.edgeFunctionInvocations} note="앱에서 추적한 번역 함수 호출" />
+              </div>
+            </div>
+            <div className="admin-usage__group">
+              <h3>Azure Translator</h3>
+              <div className="admin-usage__grid admin-usage__grid--azure">
+                <UsageCard label="번역 문자" metric={dashboard.usage.azureTranslator.translatedCharacters} note="성공한 API 요청의 원문 문자 합계" />
+              </div>
+            </div>
           </section>
 
           <form className="admin-filters" onSubmit={submitSearch}>

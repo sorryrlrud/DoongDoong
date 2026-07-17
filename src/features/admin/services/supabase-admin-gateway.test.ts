@@ -16,6 +16,24 @@ const createClient = () => {
 };
 
 describe("SupabaseAdminGateway", () => {
+  it("loads dashboard and service usage together", async () => {
+    const { client, rpc } = createClient();
+    rpc
+      .mockResolvedValueOnce({ data: { stats: {}, users: [], messages: [] }, error: null })
+      .mockResolvedValueOnce({ data: { supabase: {}, azureTranslator: {} }, error: null });
+    const gateway = new SupabaseAdminGateway(client as never);
+
+    const dashboard = await gateway.getDashboard({ query: "user", status: "reported" });
+
+    expect(rpc).toHaveBeenNthCalledWith(1, "admin_dashboard", {
+      p_query: "user",
+      p_status: "reported",
+      p_limit: 50,
+    });
+    expect(rpc).toHaveBeenNthCalledWith(2, "admin_service_usage");
+    expect(dashboard.usage).toEqual({ supabase: {}, azureTranslator: {} });
+  });
+
   it("calls the scoped reset RPC", async () => {
     const { client, rpc } = createClient();
     const gateway = new SupabaseAdminGateway(client as never);

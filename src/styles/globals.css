@@ -3074,6 +3074,117 @@ h3,
   color: var(--danger);
 }
 
+.admin-usage {
+  margin-bottom: 34px;
+  padding: 22px;
+  border: 2px solid var(--ocean-ink);
+  border-radius: 12px;
+  background: rgba(255, 250, 240, 0.9);
+  box-shadow: 4px 4px 0 rgba(23, 63, 84, 0.14);
+}
+
+.admin-usage .admin-section__heading {
+  align-items: flex-end;
+}
+
+.admin-usage .admin-section__heading p {
+  margin: 4px 0 0;
+  color: rgba(23, 63, 84, 0.64);
+  font-size: 12px;
+}
+
+.admin-usage__group + .admin-usage__group {
+  margin-top: 22px;
+}
+
+.admin-usage__group h3 {
+  margin: 0 0 10px;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.admin-usage__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.admin-usage__grid--azure {
+  grid-template-columns: minmax(240px, 1fr) repeat(3, minmax(0, 1fr));
+}
+
+.admin-usage-card {
+  padding: 15px;
+  border: 1.5px solid rgba(23, 63, 84, 0.72);
+  border-radius: 9px;
+  background: var(--paper-light);
+}
+
+.admin-usage-card header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.admin-usage-card header strong {
+  font-family: var(--font-display);
+  font-size: 23px;
+}
+
+.admin-usage-card__meter {
+  height: 8px;
+  margin: 10px 0 13px;
+  overflow: hidden;
+  border: 1px solid rgba(23, 63, 84, 0.5);
+  border-radius: 999px;
+  background: rgba(23, 63, 84, 0.1);
+}
+
+.admin-usage-card__meter span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--coral-dark);
+}
+
+.admin-usage-card dl {
+  display: grid;
+  margin: 0;
+  gap: 5px;
+}
+
+.admin-usage-card dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-usage-card dt,
+.admin-usage-card dd {
+  margin: 0;
+  font-size: 12px;
+}
+
+.admin-usage-card dt {
+  color: rgba(23, 63, 84, 0.62);
+}
+
+.admin-usage-card dd {
+  font-weight: 800;
+}
+
+.admin-usage-card p {
+  margin: 11px 0 0;
+  color: rgba(23, 63, 84, 0.62);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
 .admin-filters {
   display: grid;
   align-items: end;
@@ -3551,6 +3662,20 @@ h3,
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .admin-usage {
+    padding: 16px;
+  }
+
+  .admin-usage .admin-section__heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .admin-usage__grid,
+  .admin-usage__grid--azure {
+    grid-template-columns: 1fr;
+  }
+
   .admin-filters {
     grid-template-columns: 1fr;
   }
@@ -3564,6 +3689,11 @@ h3,
 @media (min-width: 768px) and (max-width: 1180px) {
   .admin-stats {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .admin-usage__grid,
+  .admin-usage__grid--azure {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

@@ -23,6 +23,28 @@ export interface AdminStats {
   totalReports: number;
 }
 
+export type AdminUsageUnit = "bytes" | "count" | "characters";
+
+export interface AdminUsageMetric {
+  used: number;
+  limit: number;
+  unit: AdminUsageUnit;
+}
+
+export interface AdminServiceUsage {
+  periodStart: string;
+  measuredAt: string;
+  supabase: {
+    databaseSize: AdminUsageMetric;
+    monthlyActiveUsers: AdminUsageMetric;
+    storageSize: AdminUsageMetric;
+    edgeFunctionInvocations: AdminUsageMetric;
+  };
+  azureTranslator: {
+    translatedCharacters: AdminUsageMetric;
+  };
+}
+
 export interface AdminUserRow {
   id: string;
   countryCode: string | null;
@@ -53,6 +75,7 @@ export interface AdminMessageRow {
 
 export interface AdminDashboard {
   stats: AdminStats;
+  usage: AdminServiceUsage;
   users: AdminUserRow[];
   messages: AdminMessageRow[];
 }
