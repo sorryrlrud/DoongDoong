@@ -54,7 +54,7 @@ describe("SupabaseOceanGateway", () => {
     expect(rpc).toHaveBeenCalledWith("ocean_snapshot", undefined);
   });
 
-  it("uses the three-argument onboarding RPC until languages are deployed", async () => {
+  it("preserves the selected language when only the legacy onboarding RPC is available", async () => {
     const rpc = vi
       .fn()
       .mockResolvedValueOnce({
@@ -64,7 +64,8 @@ describe("SupabaseOceanGateway", () => {
           message: "Could not find the function public.ocean_complete_onboarding(p_country_code, p_default_signature, p_sea_id)",
         },
       })
-      .mockResolvedValueOnce({ data: snapshot, error: null });
+      .mockResolvedValueOnce({ data: snapshot, error: null })
+      .mockResolvedValueOnce({ data: { ...snapshot, languageCode: "en" }, error: null });
     const client = {
       auth: {
         getSession: vi.fn().mockResolvedValue({ data: { session: { user: { id: "user-id" } } }, error: null }),
@@ -73,17 +74,24 @@ describe("SupabaseOceanGateway", () => {
     };
     const gateway = new SupabaseOceanGateway(client as never);
 
-    await expect(gateway.completeOnboarding("KR", "pacific", "밤의 여행자", "ko")).resolves.toMatchObject({ seaId: "pacific" });
+    await expect(gateway.completeOnboarding("KR", "pacific", "밤의 여행자", "en")).resolves.toMatchObject({
+      seaId: "pacific",
+      languageCode: "en",
+    });
     expect(rpc).toHaveBeenNthCalledWith(1, "ocean_complete_onboarding", {
       p_country_code: "KR",
       p_sea_id: "pacific",
       p_default_signature: "밤의 여행자",
-      p_language_code: "ko",
+      p_language_code: "en",
     });
     expect(rpc).toHaveBeenNthCalledWith(2, "ocean_complete_onboarding", {
       p_country_code: "KR",
       p_sea_id: "pacific",
       p_default_signature: "밤의 여행자",
+    });
+    expect(rpc).toHaveBeenNthCalledWith(3, "ocean_update_profile", {
+      p_country_code: "KR",
+      p_language_code: "en",
     });
   });
 

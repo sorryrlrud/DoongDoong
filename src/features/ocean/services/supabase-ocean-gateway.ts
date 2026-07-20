@@ -110,22 +110,24 @@ export class SupabaseOceanGateway implements OceanGateway {
     languageCode: LanguageCode,
   ): Promise<OceanSnapshot> {
     try {
-      return await this.call("ocean_complete_onboarding", {
+      const snapshot = await this.call("ocean_complete_onboarding", {
         p_country_code: countryCode,
         p_sea_id: seaId,
         p_default_signature: defaultSignature.trim() || null,
         p_language_code: languageCode,
       });
+      return this.ensureOnboardingLanguage(snapshot, countryCode, languageCode);
     } catch (error) {
-      // Keep the deployed app usable until the accompanying migration reaches Supabase.
-      // The legacy RPC can still persist the selected sea; country metadata begins
-      // syncing automatically for newly onboarded users once the migration is applied.
+      // A stale PostgREST schema cache can expose the legacy three-argument
+      // function briefly. Finish onboarding, then explicitly persist the locale
+      // if the profile endpoint is already available.
       if (!isMissingRpcFunction(error, "ocean_complete_onboarding")) throw error;
-      return this.call("ocean_complete_onboarding", {
+      const snapshot = await this.call("ocean_complete_onboarding", {
         p_country_code: countryCode,
         p_sea_id: seaId,
         p_default_signature: defaultSignature.trim() || null,
       });
+      return this.ensureOnboardingLanguage(snapshot, countryCode, languageCode);
     }
   }
 
@@ -160,6 +162,23 @@ export class SupabaseOceanGateway implements OceanGateway {
 
   async updateSea(seaId: SeaId): Promise<OceanSnapshot> {
     return this.call("ocean_update_sea", { p_sea_id: seaId });
+  }
+
+  private async ensureOnboardingLanguage(
+    snapshot: OceanSnapshot,
+    countryCode: string,
+    languageCode: LanguageCode,
+  ): Promise<OceanSnapshot> {
+    if (snapshot.languageCode === languageCode) return snapshot;
+
+    try {
+      return await this.updateProfile(countryCode, languageCode);
+    } catch (error) {
+      // Preserve the just-selected locale for the current experience when an
+      // older backend has neither language-aware profile endpoint nor RPC.
+      if (!isMissingRpcFunction(error, "ocean_update_profile")) throw error;
+      return { ...snapshot, languageCode };
+    }
   }
 
   private async ensureTranslation(messageId: string): Promise<void> {

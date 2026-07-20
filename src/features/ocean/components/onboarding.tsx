@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { COUNTRY_OPTIONS, countryName, suggestedCountryCode } from "@/features/ocean/countries";
 import { HERO_IMAGE } from "@/shared/brand";
 import { useI18n } from "@/i18n/i18n";
@@ -20,17 +20,22 @@ export function Onboarding({
   const { t } = useI18n();
   const [step, setStep] = useState<"locale" | "principles">("locale");
   const [countryCode, setCountryCode] = useState(() => initialCountryCode ?? suggestedCountryCode());
+  const [selectedLanguageCode, setSelectedLanguageCode] = useState(languageCode);
   const [accepted, setAccepted] = useState(false);
   const [defaultSignature, setDefaultSignature] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Keep the country selector responsive even while the app-level locale is
+  // being persisted. The prop remains the source of truth after a sync.
+  useEffect(() => setSelectedLanguageCode(languageCode), [languageCode]);
 
   const handleComplete = async () => {
     if (!accepted || submitting) return;
     setSubmitting(true);
     setError(null);
     try {
-      await onComplete(countryCode, defaultSignature.trim(), languageCode);
+      await onComplete(countryCode, defaultSignature.trim(), selectedLanguageCode);
     } catch {
       setError(t("onboarding.error"));
     } finally {
@@ -55,8 +60,12 @@ export function Onboarding({
                 <span>{t("onboarding.language")}</span>
                 <select
                   id="onboarding-language"
-                  value={languageCode}
-                  onChange={(event) => onLanguageChange(event.target.value as LanguageCode)}
+                  value={selectedLanguageCode}
+                  onChange={(event) => {
+                    const nextLanguageCode = event.target.value as LanguageCode;
+                    setSelectedLanguageCode(nextLanguageCode);
+                    onLanguageChange(nextLanguageCode);
+                  }}
                 >
                   {SUPPORTED_LANGUAGES.map((language) => (
                     <option key={language.code} value={language.code}>{language.nativeName}</option>
@@ -72,7 +81,7 @@ export function Onboarding({
                 >
                   {COUNTRY_OPTIONS.map((country) => (
                     <option key={country.code} value={country.code}>
-                      {countryName(country.code, languageCode)}
+                      {countryName(country.code, selectedLanguageCode)}
                     </option>
                   ))}
                 </select>

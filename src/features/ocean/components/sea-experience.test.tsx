@@ -39,6 +39,19 @@ describe("sea experience", () => {
     expect(html).not.toContain("onboarding-sea");
   });
 
+  it("uses the selected onboarding language for country names", () => {
+    const html = renderToStaticMarkup(
+      <Onboarding
+        initialCountryCode="KR"
+        languageCode="en"
+        onLanguageChange={() => undefined}
+        onComplete={async () => undefined}
+      />,
+    );
+
+    expect(html).toContain("South Korea");
+  });
+
   it("does not expose a default sea in settings", () => {
     const html = renderToStaticMarkup(
       <SettingsScreen
