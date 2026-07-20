@@ -23,14 +23,14 @@ interface SettingsScreenProps {
   countryCode: string;
   languageCode: LanguageCode;
   reduceMotion: boolean;
-  onReduceMotionChange: (value: boolean) => void;
   defaultSignature: string;
   autoIncludeDate: boolean;
   onProfileChange: (snapshot: OceanSnapshot, languageCode: LanguageCode) => void;
-  onWritingDefaultsChange: (value: {
-    defaultSignature: string;
+  onDefaultSignatureChange: (value: string) => void;
+  onAppPreferencesChange: (value: {
+    reduceMotion: boolean;
     autoIncludeDate: boolean;
-  }) => void;
+  }) => Promise<void>;
   onLinkIdentity: (provider: SocialAuthProvider) => Promise<void>;
   onSignOut: () => Promise<void>;
 }
@@ -40,11 +40,11 @@ export function SettingsScreen({
   countryCode,
   languageCode,
   reduceMotion,
-  onReduceMotionChange,
   defaultSignature,
   autoIncludeDate,
   onProfileChange,
-  onWritingDefaultsChange,
+  onDefaultSignatureChange,
+  onAppPreferencesChange,
   onLinkIdentity,
   onSignOut,
 }: SettingsScreenProps) {
@@ -52,6 +52,7 @@ export function SettingsScreen({
   const [draftCountryCode, setDraftCountryCode] = useState(countryCode);
   const [draftLanguageCode, setDraftLanguageCode] = useState(languageCode);
   const [savingProfile, setSavingProfile] = useState(false);
+  const [savingAppPreferences, setSavingAppPreferences] = useState(false);
   const [notice, setNotice] = useState<MessageKey | null>(null);
   const [error, setError] = useState<MessageKey | null>(null);
   const [signingOut, setSigningOut] = useState(false);
@@ -82,6 +83,22 @@ export function SettingsScreen({
       setError("settings.profileError");
     } finally {
       setSavingProfile(false);
+    }
+  };
+
+  const saveAppPreferences = async (next: {
+    reduceMotion: boolean;
+    autoIncludeDate: boolean;
+  }) => {
+    if (savingAppPreferences) return;
+    setSavingAppPreferences(true);
+    setError(null);
+    try {
+      await onAppPreferencesChange(next);
+    } catch {
+      setError("settings.profileError");
+    } finally {
+      setSavingAppPreferences(false);
     }
   };
 
@@ -206,10 +223,7 @@ export function SettingsScreen({
                 maxLength={20}
                 placeholder={t("onboarding.signaturePlaceholder")}
                 onBlur={() => void syncDefaultSignature()}
-                onChange={(event) => onWritingDefaultsChange({
-                  defaultSignature: event.target.value,
-                  autoIncludeDate,
-                })}
+                onChange={(event) => onDefaultSignatureChange(event.target.value)}
               />
             </label>
             <div className="writing-defaults__date">
@@ -219,8 +233,9 @@ export function SettingsScreen({
                 type="button"
                 role="switch"
                 aria-checked={autoIncludeDate}
-                onClick={() => onWritingDefaultsChange({
-                  defaultSignature,
+                disabled={savingAppPreferences}
+                onClick={() => void saveAppPreferences({
+                  reduceMotion,
                   autoIncludeDate: !autoIncludeDate,
                 })}
               >
@@ -238,7 +253,11 @@ export function SettingsScreen({
             type="button"
             role="switch"
             aria-checked={reduceMotion}
-            onClick={() => onReduceMotionChange(!reduceMotion)}
+            disabled={savingAppPreferences}
+            onClick={() => void saveAppPreferences({
+              reduceMotion: !reduceMotion,
+              autoIncludeDate,
+            })}
           >
             <span aria-hidden="true" />
             <strong>{reduceMotion ? t("common.on") : t("common.off")}</strong>

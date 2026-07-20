@@ -25,14 +25,13 @@ import { BEACH_IMAGE } from "@/shared/brand";
 import { playIncomingWave, playSeagullCall } from "@/features/ocean/services/ocean-audio";
 import { recommendedSeaForCountry } from "@/features/ocean/countries";
 import { I18nProvider, useI18n } from "@/i18n/i18n";
-import type { LanguageCode } from "@/i18n/languages";
 
 const wait = (duration: number) => new Promise((resolve) => window.setTimeout(resolve, duration));
 
 interface AppExperienceProps {
   preferences: AppPreferences;
   updatePreferences: (next: AppPreferences) => void;
-  syncLanguage: (languageCode: LanguageCode) => void;
+  syncServerPreferences: (snapshot: OceanSnapshot) => void;
 }
 
 export function App() {
@@ -41,18 +40,23 @@ export function App() {
     setPreferences(next);
     savePreferences(next);
   }, []);
-  const syncLanguage = useCallback((languageCode: LanguageCode) => {
+  const syncServerPreferences = useCallback((snapshot: OceanSnapshot) => {
     setPreferences((current) => {
-      if (current.languageCode === languageCode) return current;
-      const next = { ...current, languageCode };
-      savePreferences(next);
-      return next;
-    });
-  }, []);
-  const syncDefaultSignature = useCallback((defaultSignature: string) => {
-    setPreferences((current) => {
-      if (current.defaultSignature === defaultSignature) return current;
-      const next = { ...current, defaultSignature };
+      const next = {
+        ...current,
+        onboarded: Boolean(snapshot.countryCode),
+        languageCode: snapshot.languageCode,
+        defaultSignature: snapshot.defaultSignature ?? "",
+        reduceMotion: snapshot.reduceMotion,
+        autoIncludeDate: snapshot.autoIncludeDate,
+      };
+      if (
+        current.onboarded === next.onboarded
+        && current.languageCode === next.languageCode
+        && current.defaultSignature === next.defaultSignature
+        && current.reduceMotion === next.reduceMotion
+        && current.autoIncludeDate === next.autoIncludeDate
+      ) return current;
       savePreferences(next);
       return next;
     });
@@ -63,16 +67,13 @@ export function App() {
       <AuthenticatedApp
         preferences={preferences}
         updatePreferences={updatePreferences}
-        syncLanguage={syncLanguage}
-        syncDefaultSignature={syncDefaultSignature}
+        syncServerPreferences={syncServerPreferences}
       />
     </I18nProvider>
   );
 }
 
-interface AuthenticatedAppProps extends AppExperienceProps {
-  syncDefaultSignature: (defaultSignature: string) => void;
-}
+type AuthenticatedAppProps = AppExperienceProps;
 
 const hasOAuthError = (): boolean => {
   const query = new URLSearchParams(window.location.search);
@@ -83,8 +84,7 @@ const hasOAuthError = (): boolean => {
 function AuthenticatedApp({
   preferences,
   updatePreferences,
-  syncLanguage,
-  syncDefaultSignature,
+  syncServerPreferences,
 }: AuthenticatedAppProps) {
   const { t } = useI18n();
   const { route, navigate } = useHashRoute();
@@ -210,8 +210,7 @@ function AuthenticatedApp({
       user={user}
       preferences={preferences}
       updatePreferences={updatePreferences}
-      syncLanguage={syncLanguage}
-      syncDefaultSignature={syncDefaultSignature}
+      syncServerPreferences={syncServerPreferences}
       onLinkIdentity={linkIdentity}
       onSignOut={signOut}
       onAuthRequired={handleAuthRequired}
@@ -230,8 +229,7 @@ function AppExperience({
   user,
   preferences,
   updatePreferences,
-  syncLanguage,
-  syncDefaultSignature,
+  syncServerPreferences,
   onLinkIdentity,
   onSignOut,
   onAuthRequired,
@@ -261,8 +259,7 @@ function AppExperience({
       .getSnapshot()
       .then((nextSnapshot) => {
         setSnapshot(nextSnapshot);
-        if (nextSnapshot.countryCode) syncLanguage(nextSnapshot.languageCode);
-        syncDefaultSignature(nextSnapshot.defaultSignature ?? "");
+        syncServerPreferences(nextSnapshot);
       })
       .catch((error: unknown) => {
         if (error instanceof AuthenticationRequiredError) {
@@ -271,7 +268,7 @@ function AppExperience({
         }
         setLoadError(t("fatal.load"));
       });
-  }, [onAuthRequired, syncDefaultSignature, syncLanguage, t]);
+  }, [onAuthRequired, syncServerPreferences, t]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -280,12 +277,15 @@ function AppExperience({
       oceanGateway
         .getSnapshot()
         .then((nextSnapshot) => {
-          if (operationEpochRef.current === operationEpoch) setSnapshot(nextSnapshot);
+          if (operationEpochRef.current === operationEpoch) {
+            setSnapshot(nextSnapshot);
+            if (readAppRoute() !== "settings") syncServerPreferences(nextSnapshot);
+          }
         })
         .catch(() => undefined);
     }, 15_000);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [syncServerPreferences]);
 
   useEffect(() => {
     const syncOtherTab = () => {
@@ -294,14 +294,17 @@ function AppExperience({
       oceanGateway
         .getSnapshot()
         .then((nextSnapshot) => {
-          if (operationEpochRef.current === operationEpoch) setSnapshot(nextSnapshot);
+          if (operationEpochRef.current === operationEpoch) {
+            setSnapshot(nextSnapshot);
+            if (readAppRoute() !== "settings") syncServerPreferences(nextSnapshot);
+          }
         })
         .catch(() => undefined);
     };
 
     window.addEventListener("storage", syncOtherTab);
     return () => window.removeEventListener("storage", syncOtherTab);
-  }, []);
+  }, [syncServerPreferences]);
 
   useEffect(() => {
     document.documentElement.dataset.reduceMotion = preferences.reduceMotion ? "true" : "false";
@@ -309,8 +312,11 @@ function AppExperience({
 
   const operationEpoch = operationEpochRef.current;
   const acceptSnapshot = useCallback((nextSnapshot: OceanSnapshot) => {
-    if (operationEpochRef.current === operationEpoch) setSnapshot(nextSnapshot);
-  }, [operationEpoch]);
+    if (operationEpochRef.current === operationEpoch) {
+      setSnapshot(nextSnapshot);
+      syncServerPreferences(nextSnapshot);
+    }
+  }, [operationEpoch, syncServerPreferences]);
   const catchFromHome = async () => {
     if (catching || !snapshot?.bottleAvailable) return;
     setCatching(true);
@@ -324,6 +330,7 @@ function AppExperience({
       ]);
       if (operationEpochRef.current !== operationEpoch) return;
       setSnapshot(nextSnapshot);
+      syncServerPreferences(nextSnapshot);
       if (readAppRoute() === "home") navigate("catch");
     } catch {
       oceanGateway.getSnapshot().then(setSnapshot).catch(() => undefined);
@@ -362,7 +369,7 @@ function AppExperience({
   // A permanently deleted account may still have an unexpired browser token.
   // The next snapshot recreates an empty profile, so missing server-side country
   // metadata must take precedence over the old device's onboarding preference.
-  if (shouldShowOnboarding(preferences, snapshot.countryCode)) {
+  if (shouldShowOnboarding(snapshot.countryCode)) {
     return (
       <Onboarding
         initialCountryCode={snapshot.countryCode}
@@ -376,7 +383,7 @@ function AppExperience({
             languageCode,
           );
           setSnapshot(nextSnapshot);
-          updatePreferences({ ...preferences, onboarded: true, defaultSignature, languageCode });
+          syncServerPreferences(nextSnapshot);
         }}
       />
     );
@@ -423,17 +430,32 @@ function AppExperience({
         countryCode={snapshot.countryCode ?? "ZZ"}
         languageCode={preferences.languageCode}
         reduceMotion={preferences.reduceMotion}
-        onReduceMotionChange={(reduceMotion) => updatePreferences({ ...preferences, reduceMotion })}
         defaultSignature={preferences.defaultSignature}
         autoIncludeDate={preferences.autoIncludeDate}
         onProfileChange={(nextSnapshot, languageCode) => {
           setSnapshot(nextSnapshot);
           updatePreferences({ ...preferences, languageCode });
         }}
-        onWritingDefaultsChange={(writingDefaults) => updatePreferences({
+        onDefaultSignatureChange={(defaultSignature) => updatePreferences({
           ...preferences,
-          ...writingDefaults,
+          defaultSignature,
         })}
+        onAppPreferencesChange={async (appPreferences) => {
+          const previousPreferences = preferences;
+          const nextPreferences = { ...preferences, ...appPreferences };
+          updatePreferences(nextPreferences);
+          try {
+            const nextSnapshot = await oceanGateway.updateAppPreferences(
+              nextPreferences.reduceMotion,
+              nextPreferences.autoIncludeDate,
+            );
+            setSnapshot(nextSnapshot);
+            syncServerPreferences(nextSnapshot);
+          } catch (error) {
+            updatePreferences(previousPreferences);
+            throw error;
+          }
+        }}
         onLinkIdentity={onLinkIdentity}
         onSignOut={onSignOut}
       />

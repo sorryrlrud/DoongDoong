@@ -10,11 +10,11 @@ describe("SettingsScreen", () => {
         countryCode="KR"
         languageCode="ko"
         reduceMotion={false}
-        onReduceMotionChange={() => undefined}
         defaultSignature=""
         autoIncludeDate={false}
         onProfileChange={() => undefined}
-        onWritingDefaultsChange={() => undefined}
+        onDefaultSignatureChange={() => undefined}
+        onAppPreferencesChange={async () => undefined}
         onLinkIdentity={async () => undefined}
         onSignOut={async () => undefined}
       />,

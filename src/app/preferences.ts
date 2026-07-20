@@ -52,6 +52,5 @@ export const savePreferences = (preferences: AppPreferences): void => {
 };
 
 export const shouldShowOnboarding = (
-  preferences: Pick<AppPreferences, "onboarded">,
   countryCode?: string,
-): boolean => !preferences.onboarded || !countryCode;
+): boolean => !countryCode;

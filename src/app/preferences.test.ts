@@ -64,9 +64,8 @@ describe("preferences", () => {
     });
   });
 
-  it("restarts onboarding when a deleted account receives a fresh server profile", () => {
-    expect(shouldShowOnboarding({ onboarded: true }, undefined)).toBe(true);
-    expect(shouldShowOnboarding({ onboarded: true }, "KR")).toBe(false);
-    expect(shouldShowOnboarding({ onboarded: false }, "KR")).toBe(true);
+  it("uses the account profile as the onboarding source of truth", () => {
+    expect(shouldShowOnboarding(undefined)).toBe(true);
+    expect(shouldShowOnboarding("KR")).toBe(false);
   });
 });
