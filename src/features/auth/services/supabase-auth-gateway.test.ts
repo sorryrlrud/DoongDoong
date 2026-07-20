@@ -4,6 +4,27 @@ import { SupabaseAuthGateway } from "@/features/auth/services/supabase-auth-gate
 describe("SupabaseAuthGateway", () => {
   afterEach(() => vi.unstubAllGlobals());
 
+  it("validates the current user with the Auth server", async () => {
+    const user = { id: "social-user" };
+    const getUser = vi.fn().mockResolvedValue({ data: { user }, error: null });
+    const gateway = new SupabaseAuthGateway({ auth: { getUser } } as never);
+
+    await expect(gateway.getCurrentUser()).resolves.toEqual({ id: "social-user" });
+    expect(getUser).toHaveBeenCalledOnce();
+  });
+
+  it("clears a deleted user's stale local session", async () => {
+    const getUser = vi.fn().mockResolvedValue({
+      data: { user: null },
+      error: { status: 403 },
+    });
+    const signOut = vi.fn().mockResolvedValue({ error: null });
+    const gateway = new SupabaseAuthGateway({ auth: { getUser, signOut } } as never);
+
+    await expect(gateway.getCurrentUser()).resolves.toBeNull();
+    expect(signOut).toHaveBeenCalledWith({ scope: "local" });
+  });
+
   it.each([
     ["google", "google"],
     ["apple", "apple"],
