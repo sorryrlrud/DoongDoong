@@ -10,6 +10,8 @@ const waitingSnapshot: OceanSnapshot = {
   seaId: "pacific",
   countryCode: "KR",
   languageCode: "ko",
+  reduceMotion: false,
+  autoIncludeDate: false,
   remainingSends: 2,
   nextCatchAt: null,
   bottleAvailable: false,
@@ -44,11 +46,11 @@ describe("sea experience", () => {
         countryCode="KR"
         languageCode="ko"
         reduceMotion={false}
-        onReduceMotionChange={() => undefined}
         defaultSignature=""
         autoIncludeDate={false}
         onProfileChange={() => undefined}
-        onWritingDefaultsChange={() => undefined}
+        onDefaultSignatureChange={() => undefined}
+        onAppPreferencesChange={async () => undefined}
         onLinkIdentity={async () => undefined}
         onSignOut={async () => undefined}
       />,

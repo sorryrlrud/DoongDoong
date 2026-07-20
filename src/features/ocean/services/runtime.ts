@@ -30,6 +30,7 @@ const unavailableOceanGateway: OceanGateway = {
   completeOnboarding: missingConfiguration,
   updateProfile: missingConfiguration,
   updateDefaultSignature: missingConfiguration,
+  updateAppPreferences: missingConfiguration,
   updateSea: missingConfiguration,
 };
 

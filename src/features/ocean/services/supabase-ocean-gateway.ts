@@ -30,6 +30,8 @@ interface DatabaseSnapshot {
   countryCode?: string | null;
   languageCode?: string | null;
   defaultSignature?: string | null;
+  reduceMotion?: boolean | null;
+  autoIncludeDate?: boolean | null;
   remainingSends: number;
   nextCatchAt: string | null;
   bottleAvailable: boolean;
@@ -146,6 +148,16 @@ export class SupabaseOceanGateway implements OceanGateway {
     });
   }
 
+  async updateAppPreferences(
+    reduceMotion: boolean,
+    autoIncludeDate: boolean,
+  ): Promise<OceanSnapshot> {
+    return this.call("ocean_update_app_preferences", {
+      p_reduce_motion: reduceMotion,
+      p_auto_include_date: autoIncludeDate,
+    });
+  }
+
   async updateSea(seaId: SeaId): Promise<OceanSnapshot> {
     return this.call("ocean_update_sea", { p_sea_id: seaId });
   }
@@ -216,6 +228,8 @@ export class SupabaseOceanGateway implements OceanGateway {
       countryCode: snapshot.countryCode ?? undefined,
       languageCode: normalizeLanguageCode(snapshot.languageCode),
       defaultSignature: snapshot.defaultSignature ?? "",
+      reduceMotion: snapshot.reduceMotion ?? false,
+      autoIncludeDate: snapshot.autoIncludeDate ?? false,
       remainingSends: snapshot.remainingSends,
       nextCatchAt: snapshot.nextCatchAt ? new Date(snapshot.nextCatchAt).getTime() : null,
       bottleAvailable: snapshot.bottleAvailable,

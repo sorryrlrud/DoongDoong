@@ -38,6 +38,8 @@ export interface OceanSnapshot {
   countryCode?: string;
   languageCode: LanguageCode;
   defaultSignature?: string;
+  reduceMotion: boolean;
+  autoIncludeDate: boolean;
   remainingSends: number;
   nextCatchAt: number | null;
   bottleAvailable: boolean;
@@ -70,6 +72,7 @@ export interface OceanGateway {
   ): Promise<OceanSnapshot>;
   updateProfile(countryCode: string, languageCode: LanguageCode): Promise<OceanSnapshot>;
   updateDefaultSignature(defaultSignature: string): Promise<OceanSnapshot>;
+  updateAppPreferences(reduceMotion: boolean, autoIncludeDate: boolean): Promise<OceanSnapshot>;
   updateSea(seaId: SeaId): Promise<OceanSnapshot>;
 }
 
