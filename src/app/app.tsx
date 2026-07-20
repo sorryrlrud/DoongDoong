@@ -18,6 +18,7 @@ import { Onboarding } from "@/features/ocean/components/onboarding";
 import { SettingsScreen } from "@/features/ocean/components/settings-screen";
 import { WriteScreen } from "@/features/ocean/components/write-screen";
 import { adminGateway, authGateway, oceanGateway } from "@/features/ocean/services/runtime";
+import { AuthenticationRequiredError } from "@/features/ocean/services/supabase-client";
 import type { OceanSnapshot } from "@/features/ocean/types/ocean";
 import { BEACH_IMAGE } from "@/shared/brand";
 import { playIncomingWave, playSeagullCall } from "@/features/ocean/services/ocean-audio";
@@ -133,6 +134,7 @@ function AuthenticatedApp({
     await authGateway.signOut();
     updatePreferences({ ...preferences, onboarded: false, defaultSignature: "" });
   };
+  const handleAuthRequired = useCallback(() => setUserId(null), []);
 
   if (!authGateway) {
     return (
@@ -172,12 +174,14 @@ function AuthenticatedApp({
       syncLanguage={syncLanguage}
       syncDefaultSignature={syncDefaultSignature}
       onSignOut={signOut}
+      onAuthRequired={handleAuthRequired}
     />
   );
 }
 
 interface AuthenticatedExperienceProps extends AuthenticatedAppProps {
   onSignOut: () => Promise<void>;
+  onAuthRequired: () => void;
 }
 
 function AppExperience({
@@ -186,6 +190,7 @@ function AppExperience({
   syncLanguage,
   syncDefaultSignature,
   onSignOut,
+  onAuthRequired,
 }: AuthenticatedExperienceProps) {
   const { t } = useI18n();
   const { route, navigate } = useHashRoute();
@@ -215,8 +220,14 @@ function AppExperience({
         if (nextSnapshot.countryCode) syncLanguage(nextSnapshot.languageCode);
         syncDefaultSignature(nextSnapshot.defaultSignature ?? "");
       })
-      .catch(() => setLoadError(t("fatal.load")));
-  }, [syncDefaultSignature, syncLanguage, t]);
+      .catch((error: unknown) => {
+        if (error instanceof AuthenticationRequiredError) {
+          onAuthRequired();
+          return;
+        }
+        setLoadError(t("fatal.load"));
+      });
+  }, [onAuthRequired, syncDefaultSignature, syncLanguage, t]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
