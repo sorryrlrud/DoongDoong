@@ -12,7 +12,13 @@ const PROVIDERS: Record<SocialAuthProvider, Provider> = {
   naver: "custom:naver",
 };
 
-const toAuthUser = (user: User | null): AuthUser | null => user ? { id: user.id } : null;
+const toAuthUser = (user: User | null): AuthUser | null => user ? {
+  id: user.id,
+  providers: [...new Set([
+    ...(user.identities ?? []).map((identity) => identity.provider),
+    ...(typeof user.app_metadata.provider === "string" ? [user.app_metadata.provider] : []),
+  ])],
+} : null;
 
 const authRedirectUrl = (): string =>
   new URL(import.meta.env.BASE_URL, window.location.origin).toString();
@@ -44,10 +50,20 @@ export class SupabaseAuthGateway implements AuthGateway {
   }
 
   async signIn(provider: SocialAuthProvider): Promise<void> {
+    await this.startOAuth(PROVIDERS[provider], authRedirectUrl());
+  }
+
+  async signInAdmin(): Promise<void> {
+    const redirectUrl = new URL(import.meta.env.BASE_URL, window.location.origin);
+    redirectUrl.searchParams.set("admin", "1");
+    await this.startOAuth("github", redirectUrl.toString());
+  }
+
+  private async startOAuth(provider: Provider, redirectTo: string): Promise<void> {
     const { data, error } = await this.client.auth.signInWithOAuth({
-      provider: PROVIDERS[provider],
+      provider,
       options: {
-        redirectTo: authRedirectUrl(),
+        redirectTo,
         skipBrowserRedirect: true,
       },
     });

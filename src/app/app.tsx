@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AppShell } from "@/app/app-shell";
 import { AdminScreen } from "@/features/admin/components/admin-screen";
 import { LoginScreen } from "@/features/auth/components/login-screen";
-import type { SocialAuthProvider } from "@/features/auth/types/auth";
+import { AdminLoginScreen } from "@/features/auth/components/admin-login-screen";
+import type { AuthUser, SocialAuthProvider } from "@/features/auth/types/auth";
 import {
   loadPreferences,
   savePreferences,
@@ -86,8 +87,10 @@ function AuthenticatedApp({
   syncDefaultSignature,
 }: AuthenticatedAppProps) {
   const { t } = useI18n();
-  const [userId, setUserId] = useState<string | null | undefined>(undefined);
+  const { route, navigate } = useHashRoute();
+  const [user, setUser] = useState<AuthUser | null | undefined>(undefined);
   const [busyProvider, setBusyProvider] = useState<SocialAuthProvider | null>(null);
+  const [adminBusy, setAdminBusy] = useState(false);
   const [authFailed, setAuthFailed] = useState(hasOAuthError);
 
   useEffect(() => {
@@ -95,18 +98,19 @@ function AuthenticatedApp({
     let active = true;
     const unsubscribe = authGateway.onAuthStateChange((user) => {
       if (!active) return;
-      setUserId(user?.id ?? null);
+      setUser(user);
       setBusyProvider(null);
+      setAdminBusy(false);
     });
 
     authGateway
       .getCurrentUser()
       .then((user) => {
-        if (active) setUserId(user?.id ?? null);
+        if (active) setUser(user);
       })
       .catch(() => {
         if (active) {
-          setUserId(null);
+          setUser(null);
           setAuthFailed(true);
         }
       });
@@ -134,7 +138,19 @@ function AuthenticatedApp({
     await authGateway.signOut();
     updatePreferences({ ...preferences, onboarded: false, defaultSignature: "" });
   };
-  const handleAuthRequired = useCallback(() => setUserId(null), []);
+  const signInAdmin = async () => {
+    if (!authGateway || adminBusy) return;
+    setAdminBusy(true);
+    setAuthFailed(false);
+    try {
+      if (user) await authGateway.signOut();
+      await authGateway.signInAdmin();
+    } catch {
+      setAdminBusy(false);
+      setAuthFailed(true);
+    }
+  };
+  const handleAuthRequired = useCallback(() => setUser(null), []);
 
   if (!authGateway) {
     return (
@@ -146,7 +162,7 @@ function AuthenticatedApp({
     );
   }
 
-  if (userId === undefined) {
+  if (user === undefined) {
     return (
       <main className="loading-screen" aria-live="polite">
         <img src={BEACH_IMAGE} alt="" />
@@ -156,7 +172,25 @@ function AuthenticatedApp({
     );
   }
 
-  if (userId === null) {
+  const isAdminRoute = route === "admin";
+  const hasGitHubIdentity = user?.providers.includes("github") ?? false;
+
+  if (isAdminRoute && !hasGitHubIdentity) {
+    return (
+      <AdminLoginScreen
+        busy={adminBusy}
+        error={authFailed}
+        onSignIn={() => void signInAdmin()}
+        onExit={() => navigate("home")}
+      />
+    );
+  }
+
+  if (isAdminRoute && user) {
+    return <AdminScreen gateway={adminGateway} onExit={() => void signOut()} />;
+  }
+
+  if (user === null) {
     return (
       <LoginScreen
         busyProvider={busyProvider}
@@ -168,7 +202,7 @@ function AuthenticatedApp({
 
   return (
     <AppExperience
-      key={userId}
+      key={user.id}
       preferences={preferences}
       updatePreferences={updatePreferences}
       syncLanguage={syncLanguage}

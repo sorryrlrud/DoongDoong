@@ -51,6 +51,11 @@ export function LoginScreen({ busyProvider, error, onSignIn }: LoginScreenProps)
         </div>
 
         <p className="login-screen__notice">{t("auth.notice")}</p>
+        <nav className="login-screen__legal" aria-label="서비스 정책">
+          <a href={`${import.meta.env.BASE_URL}about.html`}>서비스 소개</a>
+          <a href={`${import.meta.env.BASE_URL}privacy.html`}>개인정보처리방침</a>
+          <a href={`${import.meta.env.BASE_URL}terms.html`}>이용약관</a>
+        </nav>
       </section>
     </main>
   );
