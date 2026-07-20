@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppShell } from "@/app/app-shell";
 import { AdminScreen } from "@/features/admin/components/admin-screen";
+import { LoginScreen } from "@/features/auth/components/login-screen";
+import type { SocialAuthProvider } from "@/features/auth/types/auth";
 import {
   loadPreferences,
   savePreferences,
@@ -15,7 +17,7 @@ import { KeptScreen } from "@/features/ocean/components/kept-screen";
 import { Onboarding } from "@/features/ocean/components/onboarding";
 import { SettingsScreen } from "@/features/ocean/components/settings-screen";
 import { WriteScreen } from "@/features/ocean/components/write-screen";
-import { adminGateway, oceanGateway } from "@/features/ocean/services/runtime";
+import { adminGateway, authGateway, oceanGateway } from "@/features/ocean/services/runtime";
 import type { OceanSnapshot } from "@/features/ocean/types/ocean";
 import { BEACH_IMAGE } from "@/shared/brand";
 import { playIncomingWave, playSeagullCall } from "@/features/ocean/services/ocean-audio";
@@ -45,19 +47,146 @@ export function App() {
       return next;
     });
   }, []);
+  const syncDefaultSignature = useCallback((defaultSignature: string) => {
+    setPreferences((current) => {
+      if (current.defaultSignature === defaultSignature) return current;
+      const next = { ...current, defaultSignature };
+      savePreferences(next);
+      return next;
+    });
+  }, []);
 
   return (
     <I18nProvider languageCode={preferences.languageCode}>
-      <AppExperience
+      <AuthenticatedApp
         preferences={preferences}
         updatePreferences={updatePreferences}
         syncLanguage={syncLanguage}
+        syncDefaultSignature={syncDefaultSignature}
       />
     </I18nProvider>
   );
 }
 
-function AppExperience({ preferences, updatePreferences, syncLanguage }: AppExperienceProps) {
+interface AuthenticatedAppProps extends AppExperienceProps {
+  syncDefaultSignature: (defaultSignature: string) => void;
+}
+
+const hasOAuthError = (): boolean => {
+  const query = new URLSearchParams(window.location.search);
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  return query.has("error") || hash.has("error");
+};
+
+function AuthenticatedApp({
+  preferences,
+  updatePreferences,
+  syncLanguage,
+  syncDefaultSignature,
+}: AuthenticatedAppProps) {
+  const { t } = useI18n();
+  const [userId, setUserId] = useState<string | null | undefined>(undefined);
+  const [busyProvider, setBusyProvider] = useState<SocialAuthProvider | null>(null);
+  const [authFailed, setAuthFailed] = useState(hasOAuthError);
+
+  useEffect(() => {
+    if (!authGateway) return;
+    let active = true;
+    const unsubscribe = authGateway.onAuthStateChange((user) => {
+      if (!active) return;
+      setUserId(user?.id ?? null);
+      setBusyProvider(null);
+    });
+
+    authGateway
+      .getCurrentUser()
+      .then((user) => {
+        if (active) setUserId(user?.id ?? null);
+      })
+      .catch(() => {
+        if (active) {
+          setUserId(null);
+          setAuthFailed(true);
+        }
+      });
+
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, []);
+
+  const signIn = async (provider: SocialAuthProvider) => {
+    if (!authGateway || busyProvider) return;
+    setBusyProvider(provider);
+    setAuthFailed(false);
+    try {
+      await authGateway.signIn(provider);
+    } catch {
+      setBusyProvider(null);
+      setAuthFailed(true);
+    }
+  };
+
+  const signOut = async () => {
+    if (!authGateway) return;
+    await authGateway.signOut();
+    updatePreferences({ ...preferences, onboarded: false, defaultSignature: "" });
+  };
+
+  if (!authGateway) {
+    return (
+      <main className="fatal-state">
+        <strong>{t("brand.name")}</strong>
+        <h1>{t("fatal.title")}</h1>
+        <p>{t("fatal.load")}</p>
+      </main>
+    );
+  }
+
+  if (userId === undefined) {
+    return (
+      <main className="loading-screen" aria-live="polite">
+        <img src={BEACH_IMAGE} alt="" />
+        <strong>{t("brand.name")}</strong>
+        <span>{t("auth.session")}</span>
+      </main>
+    );
+  }
+
+  if (userId === null) {
+    return (
+      <LoginScreen
+        busyProvider={busyProvider}
+        error={authFailed ? t("auth.error") : null}
+        onSignIn={(provider) => void signIn(provider)}
+      />
+    );
+  }
+
+  return (
+    <AppExperience
+      key={userId}
+      preferences={preferences}
+      updatePreferences={updatePreferences}
+      syncLanguage={syncLanguage}
+      syncDefaultSignature={syncDefaultSignature}
+      onSignOut={signOut}
+    />
+  );
+}
+
+interface AuthenticatedExperienceProps extends AuthenticatedAppProps {
+  onSignOut: () => Promise<void>;
+}
+
+function AppExperience({
+  preferences,
+  updatePreferences,
+  syncLanguage,
+  syncDefaultSignature,
+  onSignOut,
+}: AuthenticatedExperienceProps) {
   const { t } = useI18n();
   const { route, navigate } = useHashRoute();
   const [snapshot, setSnapshot] = useState<OceanSnapshot | null>(null);
@@ -84,9 +213,10 @@ function AppExperience({ preferences, updatePreferences, syncLanguage }: AppExpe
       .then((nextSnapshot) => {
         setSnapshot(nextSnapshot);
         if (nextSnapshot.countryCode) syncLanguage(nextSnapshot.languageCode);
+        syncDefaultSignature(nextSnapshot.defaultSignature ?? "");
       })
       .catch(() => setLoadError(t("fatal.load")));
-  }, [syncLanguage, t]);
+  }, [syncDefaultSignature, syncLanguage, t]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -248,6 +378,7 @@ function AppExperience({ preferences, updatePreferences, syncLanguage }: AppExpe
           ...preferences,
           ...writingDefaults,
         })}
+        onSignOut={onSignOut}
       />
     );
   } else {

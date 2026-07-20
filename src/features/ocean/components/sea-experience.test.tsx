@@ -48,6 +48,7 @@ describe("sea experience", () => {
         autoIncludeDate={false}
         onProfileChange={() => undefined}
         onWritingDefaultsChange={() => undefined}
+        onSignOut={async () => undefined}
       />,
     );
 

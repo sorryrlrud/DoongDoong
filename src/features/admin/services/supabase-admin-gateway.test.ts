@@ -16,6 +16,13 @@ const createClient = () => {
 };
 
 describe("SupabaseAdminGateway", () => {
+  it("returns the signed-in social user's UID", async () => {
+    const { client } = createClient();
+    const gateway = new SupabaseAdminGateway(client as never);
+
+    await expect(gateway.getAuthInfo()).resolves.toEqual({ userId: "admin-id" });
+  });
+
   it("loads dashboard and service usage together", async () => {
     const { client, rpc } = createClient();
     rpc

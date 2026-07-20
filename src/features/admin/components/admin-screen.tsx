@@ -117,7 +117,6 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
   const [status, setStatus] = useState<AdminMessageStatus>("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [linkingGitHub, setLinkingGitHub] = useState(false);
   const [actionKey, setActionKey] = useState<string | null>(null);
   const [actionFeedback, setActionFeedback] = useState<ActionFeedback | null>(null);
   const [currentTime, setCurrentTime] = useState(() => Date.now());
@@ -183,18 +182,6 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
   const submitSearch = (event: FormEvent) => {
     event.preventDefault();
     void loadDashboard(query, status);
-  };
-
-  const beginGitHubLogin = async () => {
-    if (!gateway || linkingGitHub) return;
-    setLinkingGitHub(true);
-    setError(null);
-    try {
-      await gateway.beginGitHubLogin();
-    } catch (caught) {
-      setError(getErrorMessage(caught));
-      setLinkingGitHub(false);
-    }
   };
 
   const runAction = async (
@@ -272,25 +259,19 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
         <section className="admin-access__card">
           <p className="admin-kicker">DOONGDOONG ADMIN</p>
           <PageHeading>관리자 권한이 필요합니다</PageHeading>
-          {authInfo?.hasGitHubIdentity ? (
+          {authInfo ? (
             <>
-              <p>GitHub 계정 연결을 확인했습니다. 이 UID에만 관리자 역할을 부여하면 됩니다.</p>
+              <p>소셜 로그인을 확인했습니다. 이 UID에 관리자 역할을 부여하면 됩니다.</p>
               <code>{authInfo.userId}</code>
               <pre>{`update public.users set role = 'admin' where id = '${authInfo.userId}';`}</pre>
             </>
           ) : (
-            <p>관리자 접근은 GitHub 계정 연결 후에만 승인할 수 있습니다.</p>
+            <p>로그인 정보를 확인한 뒤 다시 시도해 주세요.</p>
           )}
           <div className="admin-access__actions">
-            {authInfo?.hasGitHubIdentity ? (
-              <button className="button button--primary" type="button" onClick={() => void loadDashboard(query, status)}>
-                권한 다시 확인
-              </button>
-            ) : (
-              <button className="button button--primary" type="button" onClick={() => void beginGitHubLogin()} disabled={linkingGitHub}>
-                {linkingGitHub ? "GitHub로 이동 중…" : "GitHub로 로그인"}
-              </button>
-            )}
+            <button className="button button--primary" type="button" onClick={() => void loadDashboard(query, status)}>
+              권한 다시 확인
+            </button>
             <button className="button button--ghost" type="button" onClick={onExit}>
               바다로 돌아가기
             </button>

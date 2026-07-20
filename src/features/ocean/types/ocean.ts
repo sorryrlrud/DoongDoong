@@ -37,6 +37,7 @@ export interface OceanSnapshot {
   seaId: SeaId;
   countryCode?: string;
   languageCode: LanguageCode;
+  defaultSignature?: string;
   remainingSends: number;
   nextCatchAt: number | null;
   bottleAvailable: boolean;

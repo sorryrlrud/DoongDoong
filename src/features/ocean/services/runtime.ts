@@ -1,5 +1,7 @@
 import { SupabaseAdminGateway } from "@/features/admin/services/supabase-admin-gateway";
 import type { AdminGateway } from "@/features/admin/types/admin";
+import { SupabaseAuthGateway } from "@/features/auth/services/supabase-auth-gateway";
+import type { AuthGateway } from "@/features/auth/types/auth";
 import { createBrowserSupabaseClient } from "@/features/ocean/services/supabase-client";
 import { SupabaseOceanGateway } from "@/features/ocean/services/supabase-ocean-gateway";
 import type { OceanGateway } from "@/features/ocean/types/ocean";
@@ -37,6 +39,9 @@ export const oceanGateway: OceanGateway = supabaseClient
 
 export const adminGateway: AdminGateway | null = supabaseClient
   ? new SupabaseAdminGateway(supabaseClient)
+  : null;
+export const authGateway: AuthGateway | null = supabaseClient
+  ? new SupabaseAuthGateway(supabaseClient)
   : null;
 export const safetyProvider = new ConservativeLocalSafetyProvider();
 export const translationProvider = new DisabledTranslationProvider();

@@ -19,6 +19,7 @@ interface SettingsScreenProps {
     defaultSignature: string;
     autoIncludeDate: boolean;
   }) => void;
+  onSignOut: () => Promise<void>;
 }
 
 export function SettingsScreen({
@@ -30,6 +31,7 @@ export function SettingsScreen({
   autoIncludeDate,
   onProfileChange,
   onWritingDefaultsChange,
+  onSignOut,
 }: SettingsScreenProps) {
   const { t } = useI18n();
   const [draftCountryCode, setDraftCountryCode] = useState(countryCode);
@@ -37,6 +39,7 @@ export function SettingsScreen({
   const [savingProfile, setSavingProfile] = useState(false);
   const [notice, setNotice] = useState<MessageKey | null>(null);
   const [error, setError] = useState<MessageKey | null>(null);
+  const [signingOut, setSigningOut] = useState(false);
 
   useEffect(() => setDraftCountryCode(countryCode), [countryCode]);
   useEffect(() => setDraftLanguageCode(languageCode), [languageCode]);
@@ -63,6 +66,18 @@ export function SettingsScreen({
       setError("settings.profileError");
     } finally {
       setSavingProfile(false);
+    }
+  };
+
+  const signOut = async () => {
+    if (signingOut) return;
+    setSigningOut(true);
+    setError(null);
+    try {
+      await onSignOut();
+    } catch {
+      setError("settings.signOutError");
+      setSigningOut(false);
     }
   };
 
@@ -164,6 +179,21 @@ export function SettingsScreen({
           >
             <span aria-hidden="true" />
             <strong>{reduceMotion ? t("common.on") : t("common.off")}</strong>
+          </button>
+        </section>
+
+        <section className="setting-section setting-section--row" aria-labelledby="setting-account-title">
+          <div>
+            <h2 id="setting-account-title">{t("settings.accountTitle")}</h2>
+            <p>{t("settings.accountDescription")}</p>
+          </div>
+          <button
+            className="button button--ghost"
+            type="button"
+            disabled={signingOut}
+            onClick={() => void signOut()}
+          >
+            {signingOut ? t("settings.signingOut") : t("settings.signOut")}
           </button>
         </section>
       </div>

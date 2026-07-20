@@ -2,6 +2,13 @@ import { createClient, type SupabaseClient, type User } from "@supabase/supabase
 
 const sessionPromises = new WeakMap<SupabaseClient, Promise<User>>();
 
+export class AuthenticationRequiredError extends Error {
+  constructor() {
+    super("소셜 로그인이 필요합니다.");
+    this.name = "AuthenticationRequiredError";
+  }
+}
+
 export const createBrowserSupabaseClient = (url: string, publishableKey: string): SupabaseClient =>
   createClient(url, publishableKey, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
@@ -15,11 +22,7 @@ export const ensureSupabaseSession = async (client: SupabaseClient): Promise<Use
     const { data, error } = await client.auth.getSession();
     if (error) throw error;
     if (data.session?.user) return data.session.user;
-
-    const { data: signInData, error: signInError } = await client.auth.signInAnonymously();
-    if (signInError) throw signInError;
-    if (!signInData.user) throw new Error("익명 사용자 세션을 만들지 못했습니다.");
-    return signInData.user;
+    throw new AuthenticationRequiredError();
   })().catch((error) => {
     sessionPromises.delete(client);
     throw error;
