@@ -21,6 +21,10 @@ export class SupabaseAuthGateway implements AuthGateway {
   constructor(private readonly client: SupabaseClient) {}
 
   async getCurrentUser(): Promise<AuthUser | null> {
+    const { data: sessionData, error: sessionError } = await this.client.auth.getSession();
+    if (sessionError) throw sessionError;
+    if (!sessionData.session) return null;
+
     const { data, error } = await this.client.auth.getUser();
     if (error) {
       if ([401, 403, 404].includes(error.status ?? 0)) {
