@@ -6,20 +6,38 @@ describe("SupabaseAuthGateway", () => {
 
   it("validates the current user with the Auth server", async () => {
     const user = { id: "social-user" };
+    const getSession = vi.fn().mockResolvedValue({
+      data: { session: { user } },
+      error: null,
+    });
     const getUser = vi.fn().mockResolvedValue({ data: { user }, error: null });
-    const gateway = new SupabaseAuthGateway({ auth: { getUser } } as never);
+    const gateway = new SupabaseAuthGateway({ auth: { getSession, getUser } } as never);
 
     await expect(gateway.getCurrentUser()).resolves.toEqual({ id: "social-user" });
+    expect(getSession).toHaveBeenCalledOnce();
     expect(getUser).toHaveBeenCalledOnce();
   });
 
+  it("treats an absent local session as a normal signed-out state", async () => {
+    const getSession = vi.fn().mockResolvedValue({ data: { session: null }, error: null });
+    const getUser = vi.fn();
+    const gateway = new SupabaseAuthGateway({ auth: { getSession, getUser } } as never);
+
+    await expect(gateway.getCurrentUser()).resolves.toBeNull();
+    expect(getUser).not.toHaveBeenCalled();
+  });
+
   it("clears a deleted user's stale local session", async () => {
+    const getSession = vi.fn().mockResolvedValue({
+      data: { session: { user: { id: "deleted-user" } } },
+      error: null,
+    });
     const getUser = vi.fn().mockResolvedValue({
       data: { user: null },
       error: { status: 403 },
     });
     const signOut = vi.fn().mockResolvedValue({ error: null });
-    const gateway = new SupabaseAuthGateway({ auth: { getUser, signOut } } as never);
+    const gateway = new SupabaseAuthGateway({ auth: { getSession, getUser, signOut } } as never);
 
     await expect(gateway.getCurrentUser()).resolves.toBeNull();
     expect(signOut).toHaveBeenCalledWith({ scope: "local" });
