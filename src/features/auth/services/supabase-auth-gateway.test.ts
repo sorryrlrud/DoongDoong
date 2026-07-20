@@ -5,7 +5,7 @@ describe("SupabaseAuthGateway", () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it("validates the current user with the Auth server", async () => {
-    const user = { id: "social-user" };
+    const user = { id: "social-user", identities: [{ provider: "google" }], app_metadata: {} };
     const getSession = vi.fn().mockResolvedValue({
       data: { session: { user } },
       error: null,
@@ -13,7 +13,7 @@ describe("SupabaseAuthGateway", () => {
     const getUser = vi.fn().mockResolvedValue({ data: { user }, error: null });
     const gateway = new SupabaseAuthGateway({ auth: { getSession, getUser } } as never);
 
-    await expect(gateway.getCurrentUser()).resolves.toEqual({ id: "social-user" });
+    await expect(gateway.getCurrentUser()).resolves.toEqual({ id: "social-user", providers: ["google"] });
     expect(getSession).toHaveBeenCalledOnce();
     expect(getUser).toHaveBeenCalledOnce();
   });
@@ -77,5 +77,27 @@ describe("SupabaseAuthGateway", () => {
     await gateway.signOut();
 
     expect(signOut).toHaveBeenCalledWith({ scope: "local" });
+  });
+
+  it("starts GitHub OAuth with the admin return URL", async () => {
+    const assign = vi.fn();
+    vi.stubGlobal("window", {
+      location: { origin: "https://sorryrlrud.github.io", assign },
+    });
+    const signInWithOAuth = vi.fn().mockResolvedValue({
+      data: { url: "https://auth.example/github" },
+      error: null,
+    });
+    const gateway = new SupabaseAuthGateway({ auth: { signInWithOAuth } } as never);
+
+    await gateway.signInAdmin();
+
+    expect(signInWithOAuth).toHaveBeenCalledWith({
+      provider: "github",
+      options: {
+        redirectTo: "https://sorryrlrud.github.io/?admin=1",
+        skipBrowserRedirect: true,
+      },
+    });
   });
 });

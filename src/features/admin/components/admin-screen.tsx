@@ -263,7 +263,10 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
             <>
               <p>소셜 로그인을 확인했습니다. 이 UID에 관리자 역할을 부여하면 됩니다.</p>
               <code>{authInfo.userId}</code>
-              <pre>{`update public.users set role = 'admin' where id = '${authInfo.userId}';`}</pre>
+              <pre>{`insert into public.users (id, role)
+values ('${authInfo.userId}', 'admin')
+on conflict (id) do update
+set role = 'admin', status = 'active', deleted_at = null;`}</pre>
             </>
           ) : (
             <p>로그인 정보를 확인한 뒤 다시 시도해 주세요.</p>

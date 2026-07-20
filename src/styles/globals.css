@@ -1652,12 +1652,37 @@ h3,
   color: #03a94d;
 }
 
+.social-login--github {
+  background: #24292f;
+  border-color: #24292f;
+  color: #fff;
+}
+
+.social-login--github .social-login__mark {
+  font-size: 0.72rem;
+}
+
 .login-screen__notice {
   max-width: 480px;
   margin-top: 22px;
   color: rgba(23, 63, 84, 0.58);
   font-size: 12px;
   line-height: 1.7;
+}
+
+.login-screen__legal {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem 1rem;
+  margin-top: 0.8rem;
+  font-size: 0.78rem;
+}
+
+.login-screen__legal a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
 }
 
 .loading-screen img {
