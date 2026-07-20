@@ -1,5 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { clearSupabaseSession, ensureSupabaseSession } from "@/features/ocean/services/supabase-client";
+import {
+  AuthenticationRequiredError,
+  clearSupabaseSession,
+  ensureSupabaseSession,
+} from "@/features/ocean/services/supabase-client";
 import {
   OceanError,
   type BottleDraft,
@@ -25,6 +29,7 @@ interface DatabaseSnapshot {
   seaId: SeaId;
   countryCode?: string | null;
   languageCode?: string | null;
+  defaultSignature?: string | null;
   remainingSends: number;
   nextCatchAt: string | null;
   bottleAvailable: boolean;
@@ -161,15 +166,17 @@ export class SupabaseOceanGateway implements OceanGateway {
   private async call(
     functionName: string,
     args?: Record<string, unknown>,
-    retryDeletedAccount = true,
   ): Promise<OceanSnapshot> {
     await ensureSupabaseSession(this.client);
     const { data, error } = await this.client.rpc(functionName, args);
 
     if (error) {
-      if (retryDeletedAccount && error.message.includes("ACCOUNT_DELETED")) {
+      if (
+        error.message.includes("ACCOUNT_DELETED")
+        || error.message.includes("SOCIAL_AUTH_REQUIRED")
+      ) {
         await clearSupabaseSession(this.client);
-        return this.call(functionName, args, false);
+        throw new AuthenticationRequiredError();
       }
       const code = ERROR_CODES.find((candidate) => error.message.includes(candidate));
       if (code) throw new OceanError(code, error.message.replace(`${code}:`, "").trim());
@@ -208,6 +215,7 @@ export class SupabaseOceanGateway implements OceanGateway {
       seaId: snapshot.seaId,
       countryCode: snapshot.countryCode ?? undefined,
       languageCode: normalizeLanguageCode(snapshot.languageCode),
+      defaultSignature: snapshot.defaultSignature ?? "",
       remainingSends: snapshot.remainingSends,
       nextCatchAt: snapshot.nextCatchAt ? new Date(snapshot.nextCatchAt).getTime() : null,
       bottleAvailable: snapshot.bottleAvailable,

@@ -87,12 +87,10 @@ export interface AdminDashboardFilters {
 
 export interface AdminAuthInfo {
   userId: string;
-  hasGitHubIdentity: boolean;
 }
 
 export interface AdminGateway {
   getAuthInfo(): Promise<AdminAuthInfo>;
-  beginGitHubLogin(): Promise<void>;
   getDashboard(filters?: AdminDashboardFilters): Promise<AdminDashboard>;
   resetUserLimits(userId: string, direction: AdminResetDirection): Promise<void>;
   makeMessageAvailable(messageId: string): Promise<void>;

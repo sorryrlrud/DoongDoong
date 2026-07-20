@@ -13,25 +13,7 @@ export class SupabaseAdminGateway implements AdminGateway {
 
   async getAuthInfo(): Promise<AdminAuthInfo> {
     const user = await ensureSupabaseSession(this.client);
-    return {
-      userId: user.id,
-      hasGitHubIdentity: user.identities?.some((identity) => identity.provider === "github") ?? false,
-    };
-  }
-
-  async beginGitHubLogin(): Promise<void> {
-    const redirectUrl = new URL(window.location.href);
-    redirectUrl.hash = "";
-    redirectUrl.searchParams.set("admin", "1");
-    const redirectTo = redirectUrl.toString();
-    const options = { redirectTo, skipBrowserRedirect: true };
-    const { error: signOutError } = await this.client.auth.signOut({ scope: "local" });
-    if (signOutError) throw signOutError;
-    const response = await this.client.auth.signInWithOAuth({ provider: "github", options });
-
-    if (response.error) throw response.error;
-    if (!response.data.url) throw new Error("GitHub 로그인 주소를 만들지 못했습니다.");
-    window.location.assign(response.data.url);
+    return { userId: user.id };
   }
 
   async getDashboard(filters: AdminDashboardFilters = {}): Promise<AdminDashboard> {

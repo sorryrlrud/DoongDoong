@@ -88,35 +88,26 @@ describe("SupabaseOceanGateway", () => {
     });
   });
 
-  it("starts a new anonymous session when an administrator deleted the current account", async () => {
-    const getSession = vi
-      .fn()
-      .mockResolvedValueOnce({ data: { session: { user: { id: "deleted-user" } } }, error: null })
-      .mockResolvedValueOnce({ data: { session: null }, error: null });
-    const signOut = vi.fn().mockResolvedValue({ error: null });
-    const signInAnonymously = vi.fn().mockResolvedValue({
-      data: { user: { id: "new-user" } },
+  it("clears a deleted account and requires social login again", async () => {
+    const getSession = vi.fn().mockResolvedValue({
+      data: { session: { user: { id: "deleted-user" } } },
       error: null,
     });
-    const rpc = vi
-      .fn()
-      .mockResolvedValueOnce({
-        data: null,
-        error: { message: "ACCOUNT_DELETED: 삭제된 계정입니다." },
-      })
-      .mockResolvedValueOnce({ data: { ...snapshot, countryCode: null }, error: null });
+    const signOut = vi.fn().mockResolvedValue({ error: null });
+    const rpc = vi.fn().mockResolvedValue({
+      data: null,
+      error: { message: "ACCOUNT_DELETED: 삭제된 계정입니다." },
+    });
     const client = {
-      auth: { getSession, signOut, signInAnonymously },
+      auth: { getSession, signOut },
       rpc,
     };
     const gateway = new SupabaseOceanGateway(client as never);
 
-    await expect(gateway.getSnapshot()).resolves.toMatchObject({
-      seaId: "pacific",
-      countryCode: undefined,
+    await expect(gateway.getSnapshot()).rejects.toMatchObject({
+      name: "AuthenticationRequiredError",
     });
     expect(signOut).toHaveBeenCalledWith({ scope: "local" });
-    expect(signInAnonymously).toHaveBeenCalledOnce();
-    expect(rpc).toHaveBeenCalledTimes(2);
+    expect(rpc).toHaveBeenCalledOnce();
   });
 });
