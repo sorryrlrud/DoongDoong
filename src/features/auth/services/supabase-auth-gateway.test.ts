@@ -70,6 +70,33 @@ describe("SupabaseAuthGateway", () => {
     expect(assign).toHaveBeenCalledWith(`https://auth.example/${provider}`);
   });
 
+  it.each([
+    ["google", "google"],
+    ["apple", "apple"],
+    ["naver", "custom:naver"],
+  ] as const)("links an additional %s identity and returns to settings", async (provider, expectedProvider) => {
+    const assign = vi.fn();
+    vi.stubGlobal("window", {
+      location: { origin: "https://sorryrlrud.github.io", assign },
+    });
+    const linkIdentity = vi.fn().mockResolvedValue({
+      data: { url: `https://auth.example/link/${provider}` },
+      error: null,
+    });
+    const gateway = new SupabaseAuthGateway({ auth: { linkIdentity } } as never);
+
+    await gateway.linkIdentity(provider);
+
+    expect(linkIdentity).toHaveBeenCalledWith({
+      provider: expectedProvider,
+      options: {
+        redirectTo: "https://sorryrlrud.github.io/#/settings",
+        skipBrowserRedirect: true,
+      },
+    });
+    expect(assign).toHaveBeenCalledWith(`https://auth.example/link/${provider}`);
+  });
+
   it("signs out only the current browser session", async () => {
     const signOut = vi.fn().mockResolvedValue({ error: null });
     const gateway = new SupabaseAuthGateway({ auth: { signOut } } as never);

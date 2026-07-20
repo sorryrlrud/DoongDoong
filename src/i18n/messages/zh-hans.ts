@@ -1,6 +1,7 @@
 import type { Messages } from "./en";
 
 export const zhHans: Messages = {
+  "settings.socialTitle":"社交登录关联","settings.socialDescription":"查看已关联到 DOONGDOONG 的登录账号，或添加其他账号。","settings.socialConnected":"已关联","settings.socialConnect":"关联","settings.socialConnecting":"正在关联…","settings.socialNotice":"关联账号仅用于登录，不会显示在信件中。","settings.socialError":"无法关联该账号。请检查账号后重试。",
   "brand.name":"DOONGDOONG","common.skip":"跳到主要内容","common.home":"返回DOONGDOONG海滩","common.cancel":"取消","common.continue":"继续","common.back":"返回","common.retry":"重试","common.optional":"选填","common.on":"开","common.off":"关","common.settings":"设置",
   "fatal.title":"无法打开大海。","fatal.load":"无法准备海洋数据，请稍后重试。","fatal.reload":"重新打开","loading.sea":"正在唤来大海…",
   "auth.eyebrow":"一场不问姓名的安静相遇","auth.title":"登录后打开大海","auth.description":"请选择一个账号。登录信息绝不会显示在信件中，也不会展示给收件人。","auth.providers":"社交登录选项","auth.google":"使用 Google 继续","auth.apple":"使用 Apple 继续","auth.naver":"使用 NAVER 继续","auth.redirecting":"正在打开登录页面…","auth.notice":"账号信息仅用于登录和服务安全，不会显示在信件中。","auth.session":"正在检查登录状态…","auth.error":"无法登录，请重试。",

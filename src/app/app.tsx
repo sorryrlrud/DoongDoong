@@ -138,6 +138,10 @@ function AuthenticatedApp({
     await authGateway.signOut();
     updatePreferences({ ...preferences, onboarded: false, defaultSignature: "" });
   };
+  const linkIdentity = async (provider: SocialAuthProvider) => {
+    if (!authGateway) return;
+    await authGateway.linkIdentity(provider);
+  };
   const signInAdmin = async () => {
     if (!authGateway || adminBusy) return;
     setAdminBusy(true);
@@ -203,10 +207,12 @@ function AuthenticatedApp({
   return (
     <AppExperience
       key={user.id}
+      user={user}
       preferences={preferences}
       updatePreferences={updatePreferences}
       syncLanguage={syncLanguage}
       syncDefaultSignature={syncDefaultSignature}
+      onLinkIdentity={linkIdentity}
       onSignOut={signOut}
       onAuthRequired={handleAuthRequired}
     />
@@ -214,15 +220,19 @@ function AuthenticatedApp({
 }
 
 interface AuthenticatedExperienceProps extends AuthenticatedAppProps {
+  user: AuthUser;
+  onLinkIdentity: (provider: SocialAuthProvider) => Promise<void>;
   onSignOut: () => Promise<void>;
   onAuthRequired: () => void;
 }
 
 function AppExperience({
+  user,
   preferences,
   updatePreferences,
   syncLanguage,
   syncDefaultSignature,
+  onLinkIdentity,
   onSignOut,
   onAuthRequired,
 }: AuthenticatedExperienceProps) {
@@ -409,6 +419,7 @@ function AppExperience({
   } else if (route === "settings") {
     content = (
       <SettingsScreen
+        linkedProviders={user.providers}
         countryCode={snapshot.countryCode ?? "ZZ"}
         languageCode={preferences.languageCode}
         reduceMotion={preferences.reduceMotion}
@@ -423,6 +434,7 @@ function AppExperience({
           ...preferences,
           ...writingDefaults,
         })}
+        onLinkIdentity={onLinkIdentity}
         onSignOut={onSignOut}
       />
     );

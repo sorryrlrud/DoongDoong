@@ -1,6 +1,7 @@
 import type { Messages } from "./en";
 
 export const ja: Messages = {
+  "settings.socialTitle":"ソーシャルログイン連携","settings.socialDescription":"DOONGDOONGに連携済みのログインアカウントを確認したり、別のアカウントを追加できます。","settings.socialConnected":"連携済み","settings.socialConnect":"連携する","settings.socialConnecting":"連携中…","settings.socialNotice":"連携したアカウントはログインにのみ使用し、手紙には表示しません。","settings.socialError":"アカウントを連携できませんでした。アカウントを確認してもう一度お試しください。",
   "brand.name":"DOONGDOONG","common.skip":"本文へスキップ","common.home":"DOONGDOONGの浜辺に戻る","common.cancel":"キャンセル","common.continue":"次へ","common.back":"戻る","common.retry":"もう一度試す","common.optional":"任意","common.on":"オン","common.off":"オフ","common.settings":"設定",
   "fatal.title":"海を開けませんでした。","fatal.load":"海のデータを準備できませんでした。しばらくしてからもう一度お試しください。","fatal.reload":"もう一度開く","loading.sea":"海を呼び寄せています…",
   "auth.eyebrow":"名前のない静かな出会い","auth.title":"ログインして海を開いてください","auth.description":"アカウントを一つ選んでください。ログイン情報が手紙や受信者に表示されることはありません。","auth.providers":"ソーシャルログインの選択肢","auth.google":"Googleで続ける","auth.apple":"Appleで続ける","auth.naver":"NAVERで続ける","auth.redirecting":"ログイン画面を開いています…","auth.notice":"アカウント情報はログインとサービスの安全のためだけに使用し、手紙には表示しません。","auth.session":"ログイン状態を確認しています…","auth.error":"ログインできませんでした。もう一度お試しください。",

@@ -40,6 +40,7 @@ describe("sea experience", () => {
   it("does not expose a default sea in settings", () => {
     const html = renderToStaticMarkup(
       <SettingsScreen
+        linkedProviders={["google"]}
         countryCode="KR"
         languageCode="ko"
         reduceMotion={false}
@@ -48,6 +49,7 @@ describe("sea experience", () => {
         autoIncludeDate={false}
         onProfileChange={() => undefined}
         onWritingDefaultsChange={() => undefined}
+        onLinkIdentity={async () => undefined}
         onSignOut={async () => undefined}
       />,
     );

@@ -23,6 +23,12 @@ const toAuthUser = (user: User | null): AuthUser | null => user ? {
 const authRedirectUrl = (): string =>
   new URL(import.meta.env.BASE_URL, window.location.origin).toString();
 
+const identityLinkRedirectUrl = (): string => {
+  const redirectUrl = new URL(import.meta.env.BASE_URL, window.location.origin);
+  redirectUrl.hash = "/settings";
+  return redirectUrl.toString();
+};
+
 export class SupabaseAuthGateway implements AuthGateway {
   constructor(private readonly client: SupabaseClient) {}
 
@@ -51,6 +57,20 @@ export class SupabaseAuthGateway implements AuthGateway {
 
   async signIn(provider: SocialAuthProvider): Promise<void> {
     await this.startOAuth(PROVIDERS[provider], authRedirectUrl());
+  }
+
+  async linkIdentity(provider: SocialAuthProvider): Promise<void> {
+    const { data, error } = await this.client.auth.linkIdentity({
+      provider: PROVIDERS[provider],
+      options: {
+        redirectTo: identityLinkRedirectUrl(),
+        skipBrowserRedirect: true,
+      },
+    });
+
+    if (error) throw error;
+    if (!data.url) throw new Error("소셜 계정 연동 주소를 만들지 못했습니다.");
+    window.location.assign(data.url);
   }
 
   async signInAdmin(): Promise<void> {

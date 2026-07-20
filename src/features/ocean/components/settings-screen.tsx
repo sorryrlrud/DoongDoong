@@ -6,8 +6,20 @@ import { PageHeading } from "@/shared/page-heading";
 import { useI18n } from "@/i18n/i18n";
 import type { MessageKey } from "@/i18n/messages/en";
 import { SUPPORTED_LANGUAGES, type LanguageCode } from "@/i18n/languages";
+import type { SocialAuthProvider } from "@/features/auth/types/auth";
+
+const SOCIAL_PROVIDERS: Array<{
+  id: SocialAuthProvider;
+  authProvider: string;
+  label: string;
+}> = [
+  { id: "naver", authProvider: "custom:naver", label: "NAVER" },
+  { id: "google", authProvider: "google", label: "Google" },
+  { id: "apple", authProvider: "apple", label: "Apple" },
+];
 
 interface SettingsScreenProps {
+  linkedProviders: string[];
   countryCode: string;
   languageCode: LanguageCode;
   reduceMotion: boolean;
@@ -19,10 +31,12 @@ interface SettingsScreenProps {
     defaultSignature: string;
     autoIncludeDate: boolean;
   }) => void;
+  onLinkIdentity: (provider: SocialAuthProvider) => Promise<void>;
   onSignOut: () => Promise<void>;
 }
 
 export function SettingsScreen({
+  linkedProviders,
   countryCode,
   languageCode,
   reduceMotion,
@@ -31,6 +45,7 @@ export function SettingsScreen({
   autoIncludeDate,
   onProfileChange,
   onWritingDefaultsChange,
+  onLinkIdentity,
   onSignOut,
 }: SettingsScreenProps) {
   const { t } = useI18n();
@@ -40,6 +55,7 @@ export function SettingsScreen({
   const [notice, setNotice] = useState<MessageKey | null>(null);
   const [error, setError] = useState<MessageKey | null>(null);
   const [signingOut, setSigningOut] = useState(false);
+  const [linkingProvider, setLinkingProvider] = useState<SocialAuthProvider | null>(null);
 
   useEffect(() => setDraftCountryCode(countryCode), [countryCode]);
   useEffect(() => setDraftLanguageCode(languageCode), [languageCode]);
@@ -81,6 +97,19 @@ export function SettingsScreen({
     }
   };
 
+  const linkIdentity = async (provider: SocialAuthProvider) => {
+    if (linkingProvider) return;
+    setLinkingProvider(provider);
+    setError(null);
+    setNotice(null);
+    try {
+      await onLinkIdentity(provider);
+    } catch {
+      setError("settings.socialError");
+      setLinkingProvider(null);
+    }
+  };
+
   return (
     <section className="screen settings-screen">
       <div className="screen-header">
@@ -91,6 +120,40 @@ export function SettingsScreen({
       {notice ? <div className="alert" role="status">{t(notice)}</div> : null}
 
       <div className="settings-list">
+        <section className="setting-section" aria-labelledby="setting-social-title">
+          <div>
+            <h2 id="setting-social-title">{t("settings.socialTitle")}</h2>
+            <p>{t("settings.socialDescription")}</p>
+          </div>
+          <ul className="social-connections" aria-label={t("settings.socialTitle")}>
+            {SOCIAL_PROVIDERS.map((provider) => {
+              const connected = linkedProviders.includes(provider.authProvider);
+              const linking = linkingProvider === provider.id;
+              return (
+                <li key={provider.id} className={`social-connection social-connection--${provider.id}`}>
+                  <span className="social-connection__mark" aria-hidden="true">
+                    {provider.id === "google" ? "G" : provider.id === "apple" ? "A" : "N"}
+                  </span>
+                  <strong>{provider.label}</strong>
+                  {connected ? (
+                    <span className="social-connection__status">{t("settings.socialConnected")}</span>
+                  ) : (
+                    <button
+                      className="button button--secondary social-connection__action"
+                      type="button"
+                      disabled={linkingProvider !== null}
+                      onClick={() => void linkIdentity(provider.id)}
+                    >
+                      {linking ? t("settings.socialConnecting") : t("settings.socialConnect")}
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          <p className="social-connections__notice">{t("settings.socialNotice")}</p>
+        </section>
+
         <section className="setting-section" aria-labelledby="setting-profile-title">
           <div>
             <h2 id="setting-profile-title">{t("settings.profileTitle")}</h2>
