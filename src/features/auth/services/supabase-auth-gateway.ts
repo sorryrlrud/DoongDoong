@@ -12,13 +12,22 @@ const PROVIDERS: Record<SocialAuthProvider, Provider> = {
   naver: "custom:naver",
 };
 
-const toAuthUser = (user: User | null): AuthUser | null => user ? {
-  id: user.id,
-  providers: [...new Set([
-    ...(user.identities ?? []).map((identity) => identity.provider),
-    ...(typeof user.app_metadata.provider === "string" ? [user.app_metadata.provider] : []),
-  ])],
-} : null;
+const toAuthUser = (user: User | null): AuthUser | null => {
+  if (!user) return null;
+
+  const appMetadataProviders = Array.isArray(user.app_metadata.providers)
+    ? user.app_metadata.providers.filter((provider): provider is string => typeof provider === "string")
+    : [];
+
+  return {
+    id: user.id,
+    providers: [...new Set([
+      ...(user.identities ?? []).map((identity) => identity.provider),
+      ...appMetadataProviders,
+      ...(typeof user.app_metadata.provider === "string" ? [user.app_metadata.provider] : []),
+    ])],
+  };
+};
 
 const authRedirectUrl = (): string =>
   new URL(import.meta.env.BASE_URL, window.location.origin).toString();

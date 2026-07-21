@@ -18,6 +18,25 @@ describe("SupabaseAuthGateway", () => {
     expect(getUser).toHaveBeenCalledOnce();
   });
 
+  it("recognizes a GitHub callback session that only includes app metadata providers", async () => {
+    const user = {
+      id: "github-admin",
+      identities: [],
+      app_metadata: { providers: ["github"] },
+    };
+    const getSession = vi.fn().mockResolvedValue({
+      data: { session: { user } },
+      error: null,
+    });
+    const getUser = vi.fn().mockResolvedValue({ data: { user }, error: null });
+    const gateway = new SupabaseAuthGateway({ auth: { getSession, getUser } } as never);
+
+    await expect(gateway.getCurrentUser()).resolves.toEqual({
+      id: "github-admin",
+      providers: ["github"],
+    });
+  });
+
   it("treats an absent local session as a normal signed-out state", async () => {
     const getSession = vi.fn().mockResolvedValue({ data: { session: null }, error: null });
     const getUser = vi.fn();
