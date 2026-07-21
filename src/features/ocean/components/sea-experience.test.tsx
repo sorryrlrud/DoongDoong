@@ -61,6 +61,7 @@ describe("sea experience", () => {
         reduceMotion={false}
         defaultSignature=""
         autoIncludeDate={false}
+        onLanguagePreview={() => undefined}
         onProfileChange={() => undefined}
         onDefaultSignatureChange={() => undefined}
         onAppPreferencesChange={async () => undefined}

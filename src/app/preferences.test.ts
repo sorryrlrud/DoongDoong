@@ -68,4 +68,20 @@ describe("preferences", () => {
     expect(shouldShowOnboarding(undefined)).toBe(true);
     expect(shouldShowOnboarding("KR")).toBe(false);
   });
+
+  it("retains an explicitly selected language until the account confirms it", () => {
+    savePreferences({
+      onboarded: true,
+      reduceMotion: false,
+      defaultSignature: "",
+      autoIncludeDate: false,
+      languageCode: "en",
+      pendingLanguageCode: "en",
+    });
+
+    expect(loadPreferences()).toMatchObject({
+      languageCode: "en",
+      pendingLanguageCode: "en",
+    });
+  });
 });

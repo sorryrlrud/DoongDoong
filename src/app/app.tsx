@@ -42,13 +42,18 @@ export function App() {
   }, []);
   const syncServerPreferences = useCallback((snapshot: OceanSnapshot) => {
     setPreferences((current) => {
+      const { pendingLanguageCode: currentPendingLanguageCode, ...currentPreferences } = current;
+      const pendingLanguageCode = currentPendingLanguageCode === snapshot.languageCode
+        ? undefined
+        : currentPendingLanguageCode;
       const next = {
-        ...current,
+        ...currentPreferences,
         onboarded: Boolean(snapshot.countryCode),
-        languageCode: snapshot.languageCode,
+        languageCode: pendingLanguageCode ?? snapshot.languageCode,
         defaultSignature: snapshot.defaultSignature ?? "",
         reduceMotion: snapshot.reduceMotion,
         autoIncludeDate: snapshot.autoIncludeDate,
+        ...(pendingLanguageCode ? { pendingLanguageCode } : {}),
       };
       if (
         current.onboarded === next.onboarded
@@ -56,6 +61,7 @@ export function App() {
         && current.defaultSignature === next.defaultSignature
         && current.reduceMotion === next.reduceMotion
         && current.autoIncludeDate === next.autoIncludeDate
+        && current.pendingLanguageCode === next.pendingLanguageCode
       ) return current;
       savePreferences(next);
       return next;
@@ -136,7 +142,12 @@ function AuthenticatedApp({
   const signOut = async () => {
     if (!authGateway) return;
     await authGateway.signOut();
-    updatePreferences({ ...preferences, onboarded: false, defaultSignature: "" });
+    updatePreferences({
+      ...preferences,
+      onboarded: false,
+      defaultSignature: "",
+      pendingLanguageCode: undefined,
+    });
   };
   const linkIdentity = async (provider: SocialAuthProvider) => {
     if (!authGateway) return;
@@ -240,7 +251,7 @@ function AppExperience({
   const [now, setNow] = useState(Date.now);
   const [catching, setCatching] = useState(false);
   const [sceneBusy, setSceneBusy] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState(false);
   const operationEpochRef = useRef(0);
   const previousIncomingMessageRef = useRef<boolean | null>(null);
   const hasIncomingMessage = snapshot
@@ -266,9 +277,9 @@ function AppExperience({
           onAuthRequired();
           return;
         }
-        setLoadError(t("fatal.load"));
+        setLoadError(true);
       });
-  }, [onAuthRequired, syncServerPreferences, t]);
+  }, [onAuthRequired, syncServerPreferences]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -344,7 +355,7 @@ function AppExperience({
       <main className="fatal-state">
         <strong>{t("brand.name")}</strong>
         <h1>{t("fatal.title")}</h1>
-        <p>{loadError}</p>
+        <p>{t("fatal.load")}</p>
         <button className="button button--primary" type="button" onClick={() => window.location.reload()}>
           {t("fatal.reload")}
         </button>
@@ -374,7 +385,11 @@ function AppExperience({
       <Onboarding
         initialCountryCode={snapshot.countryCode}
         languageCode={preferences.languageCode}
-        onLanguageChange={(languageCode) => updatePreferences({ ...preferences, languageCode })}
+        onLanguageChange={(languageCode) => updatePreferences({
+          ...preferences,
+          languageCode,
+          pendingLanguageCode: languageCode,
+        })}
         onComplete={async (countryCode, defaultSignature, languageCode) => {
           const nextSnapshot = await oceanGateway.completeOnboarding(
             countryCode,
@@ -432,9 +447,18 @@ function AppExperience({
         reduceMotion={preferences.reduceMotion}
         defaultSignature={preferences.defaultSignature}
         autoIncludeDate={preferences.autoIncludeDate}
+        onLanguagePreview={(languageCode) => updatePreferences({
+          ...preferences,
+          languageCode,
+          pendingLanguageCode: languageCode,
+        })}
         onProfileChange={(nextSnapshot, languageCode) => {
-          setSnapshot(nextSnapshot);
-          updatePreferences({ ...preferences, languageCode });
+          setSnapshot({ ...nextSnapshot, languageCode });
+          updatePreferences({
+            ...preferences,
+            languageCode,
+            ...(nextSnapshot.languageCode === languageCode ? {} : { pendingLanguageCode: languageCode }),
+          });
         }}
         onDefaultSignatureChange={(defaultSignature) => updatePreferences({
           ...preferences,

@@ -25,6 +25,7 @@ interface SettingsScreenProps {
   reduceMotion: boolean;
   defaultSignature: string;
   autoIncludeDate: boolean;
+  onLanguagePreview: (languageCode: LanguageCode) => void;
   onProfileChange: (snapshot: OceanSnapshot, languageCode: LanguageCode) => void;
   onDefaultSignatureChange: (value: string) => void;
   onAppPreferencesChange: (value: {
@@ -42,6 +43,7 @@ export function SettingsScreen({
   reduceMotion,
   defaultSignature,
   autoIncludeDate,
+  onLanguagePreview,
   onProfileChange,
   onDefaultSignatureChange,
   onAppPreferencesChange,
@@ -51,6 +53,8 @@ export function SettingsScreen({
   const { t } = useI18n();
   const [draftCountryCode, setDraftCountryCode] = useState(countryCode);
   const [draftLanguageCode, setDraftLanguageCode] = useState(languageCode);
+  const [savedCountryCode, setSavedCountryCode] = useState(countryCode);
+  const [savedLanguageCode, setSavedLanguageCode] = useState(languageCode);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingAppPreferences, setSavingAppPreferences] = useState(false);
   const [notice, setNotice] = useState<MessageKey | null>(null);
@@ -58,7 +62,10 @@ export function SettingsScreen({
   const [signingOut, setSigningOut] = useState(false);
   const [linkingProvider, setLinkingProvider] = useState<SocialAuthProvider | null>(null);
 
-  useEffect(() => setDraftCountryCode(countryCode), [countryCode]);
+  useEffect(() => {
+    setDraftCountryCode(countryCode);
+    setSavedCountryCode(countryCode);
+  }, [countryCode]);
   useEffect(() => setDraftLanguageCode(languageCode), [languageCode]);
 
   const syncDefaultSignature = async () => {
@@ -78,6 +85,8 @@ export function SettingsScreen({
     try {
       const snapshot = await oceanGateway.updateProfile(draftCountryCode, draftLanguageCode);
       onProfileChange(snapshot, draftLanguageCode);
+      setSavedCountryCode(draftCountryCode);
+      setSavedLanguageCode(draftLanguageCode);
       setNotice("settings.profileSaved");
     } catch {
       setError("settings.profileError");
@@ -179,9 +188,13 @@ export function SettingsScreen({
           <div className="writing-defaults settings-profile-fields">
             <label>
               <span>{t("onboarding.language")}</span>
-              <select
-                value={draftLanguageCode}
-                onChange={(event) => setDraftLanguageCode(event.target.value as LanguageCode)}
+                <select
+                  value={draftLanguageCode}
+                  onChange={(event) => {
+                    const nextLanguageCode = event.target.value as LanguageCode;
+                    setDraftLanguageCode(nextLanguageCode);
+                    onLanguagePreview(nextLanguageCode);
+                  }}
               >
                 {SUPPORTED_LANGUAGES.map((language) => (
                   <option key={language.code} value={language.code}>{language.nativeName}</option>
@@ -201,7 +214,10 @@ export function SettingsScreen({
             <button
               className="button button--secondary"
               type="button"
-              disabled={savingProfile || (draftCountryCode === countryCode && draftLanguageCode === languageCode)}
+              disabled={savingProfile || (
+                draftCountryCode === savedCountryCode
+                && draftLanguageCode === savedLanguageCode
+              )}
               onClick={() => void saveProfile()}
             >
               {t("settings.saveProfile")}

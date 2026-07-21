@@ -8,6 +8,7 @@ export interface AppPreferences {
   defaultSignature: string;
   autoIncludeDate: boolean;
   languageCode: LanguageCode;
+  pendingLanguageCode?: LanguageCode;
 }
 
 const defaultPreferences = (): AppPreferences => ({
@@ -37,6 +38,9 @@ export const loadPreferences = (): AppPreferences => {
       ...defaults,
       ...stored,
       languageCode: isLanguageCode(stored.languageCode) ? stored.languageCode : defaults.languageCode,
+      ...(isLanguageCode(stored.pendingLanguageCode)
+        ? { pendingLanguageCode: stored.pendingLanguageCode }
+        : {}),
     };
   } catch {
     return defaults;
