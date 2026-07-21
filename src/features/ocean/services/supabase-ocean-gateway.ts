@@ -1,18 +1,22 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
-  AuthenticationRequiredError,
   clearSupabaseSession,
   ensureSupabaseSession,
 } from "@/features/ocean/services/supabase-client";
+import { AuthenticationRequiredError } from "@/features/ocean/services/errors";
 import {
   OceanError,
   type BottleDraft,
   type BottleResolution,
+  type NotificationPreferences,
+  type OceanErrorCode,
   type OceanGateway,
   type OceanSnapshot,
+  type PushSubscriptionInput,
+  type ReportReason,
   type SeaId,
 } from "@/features/ocean/types/ocean";
-import { localeForLanguage, normalizeLanguageCode, type LanguageCode } from "@/i18n/languages";
+import { normalizeLanguageCode, type LanguageCode } from "@/i18n/languages";
 
 interface DatabaseBottleContent {
   id: string;
@@ -36,6 +40,7 @@ interface DatabaseSnapshot {
   nextCatchAt: string | null;
   bottleAvailable: boolean;
   waitingForNews?: boolean;
+  bottleArrivedEnabled?: boolean | null;
   activeBottle: (DatabaseBottleContent & {
     opened: boolean;
     caughtAt: string;
@@ -46,6 +51,15 @@ interface DatabaseSnapshot {
   }>;
 }
 
+interface EdgeErrorEnvelope {
+  error?: {
+    code?: string;
+    message?: string;
+    retryable?: boolean;
+    requestId?: string;
+  };
+}
+
 const ERROR_CODES = [
   "COOLDOWN",
   "DAILY_LIMIT",
@@ -54,7 +68,18 @@ const ERROR_CODES = [
   "ACTIVE_BOTTLE",
   "ADMIN_ACCOUNT",
   "INVALID_DRAFT",
-] as const;
+  "AUTH_REQUIRED",
+  "ACCOUNT_INACTIVE",
+  "CONTENT_REJECTED",
+  "RATE_LIMITED",
+  "MODERATION_UNAVAILABLE",
+  "CONFIRMATION_REQUIRED",
+  "ACCOUNT_DELETE_IN_PROGRESS",
+  "ACCOUNT_DELETE_FAILED",
+  "MESSAGE_NOT_OWNED",
+  "INVALID_REPORT_REASON",
+  "REPORT_ALREADY_EXISTS",
+] as const satisfies readonly OceanErrorCode[];
 
 const isMissingRpcFunction = (error: unknown, functionName: string): boolean =>
   typeof error === "object"
@@ -65,6 +90,40 @@ const isMissingRpcFunction = (error: unknown, functionName: string): boolean =>
   && typeof error.message === "string"
   && error.message.includes(`public.${functionName}`);
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
+const messageFromUnknownError = (error: unknown): string => {
+  if (error instanceof Error) return error.message;
+  if (isRecord(error) && typeof error.message === "string") return error.message;
+  return "The request could not be completed.";
+};
+
+const asEdgeEnvelope = (value: unknown): EdgeErrorEnvelope | null => {
+  if (!isRecord(value) || !isRecord(value.error)) return null;
+  return {
+    error: {
+      code: typeof value.error.code === "string" ? value.error.code : undefined,
+      message: typeof value.error.message === "string" ? value.error.message : undefined,
+      retryable: typeof value.error.retryable === "boolean" ? value.error.retryable : undefined,
+      requestId: typeof value.error.requestId === "string" ? value.error.requestId : undefined,
+    },
+  };
+};
+
+const readEdgeErrorEnvelope = async (error: unknown): Promise<EdgeErrorEnvelope | null> => {
+  if (!isRecord(error) || !("context" in error)) return null;
+  const context = error.context;
+  if (!isRecord(context) || typeof context.json !== "function") return null;
+
+  try {
+    const response = typeof context.clone === "function" ? context.clone() : context;
+    return asEdgeEnvelope(await response.json());
+  } catch {
+    return null;
+  }
+};
+
 export class SupabaseOceanGateway implements OceanGateway {
   constructor(private readonly client: SupabaseClient) {}
 
@@ -73,18 +132,21 @@ export class SupabaseOceanGateway implements OceanGateway {
   }
 
   async sendBottle(draft: BottleDraft): Promise<OceanSnapshot> {
-    const dateLabel = draft.includeDate
-      ? new Intl.DateTimeFormat(localeForLanguage(draft.languageCode), { dateStyle: "long" }).format(new Date())
-      : null;
-
-    return this.call("ocean_send_message", {
-      p_body: draft.body,
-      p_sea_id: draft.seaId,
-      p_signature: draft.signature?.trim() || null,
-      p_date_label: dateLabel,
+    const payload = await this.invokeEdge<{ snapshot?: DatabaseSnapshot }>("send-message", {
+      body: draft.body.trim(),
+      seaId: draft.seaId,
+      signature: draft.signature?.trim() || undefined,
+      includeDate: draft.includeDate,
     });
+
+    if (!payload.snapshot) throw new Error("The send-message response did not include a snapshot.");
+    return this.toSnapshot(payload.snapshot);
   }
 
+  /**
+   * Kept only for the short rollout compatibility window. New clients never
+   * claim from a global pool; they simply open their server-assigned bottle.
+   */
   async catchBottle(): Promise<OceanSnapshot> {
     const snapshot = await this.call("ocean_catch_message");
     if (snapshot.activeBottle) await this.ensureTranslation(snapshot.activeBottle.id);
@@ -100,6 +162,14 @@ export class SupabaseOceanGateway implements OceanGateway {
     return this.call("ocean_resolve_message", {
       p_message_id: id,
       p_resolution: resolution,
+    });
+  }
+
+  async reportBottle(id: string, reason: ReportReason, blockAuthor: boolean): Promise<OceanSnapshot> {
+    return this.call("ocean_report_message", {
+      p_message_id: id,
+      p_reason: reason,
+      p_block_author: blockAuthor,
     });
   }
 
@@ -164,6 +234,40 @@ export class SupabaseOceanGateway implements OceanGateway {
     return this.call("ocean_update_sea", { p_sea_id: seaId });
   }
 
+  async updateTimeZone(timeZone: string): Promise<OceanSnapshot> {
+    return this.call("ocean_update_time_zone", { p_time_zone: timeZone });
+  }
+
+  async upsertPushSubscription(subscription: PushSubscriptionInput): Promise<{
+    enabled: boolean;
+    subscriptionActive: boolean;
+  }> {
+    return this.callData("ocean_upsert_push_subscription", {
+      p_endpoint: subscription.endpoint,
+      p_p256dh: subscription.p256dh,
+      p_auth: subscription.auth,
+      p_user_agent: subscription.userAgent ?? null,
+    });
+  }
+
+  async deletePushSubscription(endpoint: string): Promise<{ subscriptionActive: boolean }> {
+    return this.callData("ocean_delete_push_subscription", { p_endpoint: endpoint });
+  }
+
+  async updateNotificationPreferences(enabled: boolean): Promise<NotificationPreferences> {
+    return this.callData("ocean_update_notification_preferences", {
+      p_bottle_arrived_enabled: enabled,
+    });
+  }
+
+  async deleteAccount(): Promise<void> {
+    await this.invokeEdge<unknown>("delete-account", { confirmation: "DELETE" });
+    // The authenticated Edge Function has already committed the deletion. A
+    // local sign-out is best effort so a browser storage failure cannot turn a
+    // successful deletion into a misleading client-side error.
+    await clearSupabaseSession(this.client).catch(() => undefined);
+  }
+
   private async ensureOnboardingLanguage(
     snapshot: OceanSnapshot,
     countryCode: string,
@@ -194,27 +298,46 @@ export class SupabaseOceanGateway implements OceanGateway {
     }
   }
 
+  private async invokeEdge<T>(functionName: string, body: Record<string, unknown>): Promise<T> {
+    await ensureSupabaseSession(this.client);
+    const { data, error } = await this.client.functions.invoke(functionName, { body });
+    if (error) throw await this.toOperationError(error);
+    return data as T;
+  }
+
   private async call(
     functionName: string,
     args?: Record<string, unknown>,
   ): Promise<OceanSnapshot> {
+    return this.toSnapshot(await this.callData<DatabaseSnapshot>(functionName, args));
+  }
+
+  private async callData<T>(functionName: string, args?: Record<string, unknown>): Promise<T> {
     await ensureSupabaseSession(this.client);
     const { data, error } = await this.client.rpc(functionName, args);
+    if (error) throw await this.toOperationError(error);
+    return data as T;
+  }
 
-    if (error) {
-      if (
-        error.message.includes("ACCOUNT_DELETED")
-        || error.message.includes("SOCIAL_AUTH_REQUIRED")
-      ) {
-        await clearSupabaseSession(this.client);
-        throw new AuthenticationRequiredError();
-      }
-      const code = ERROR_CODES.find((candidate) => error.message.includes(candidate));
-      if (code) throw new OceanError(code, error.message.replace(`${code}:`, "").trim());
-      throw error;
+  private async toOperationError(error: unknown): Promise<Error> {
+    const envelope = await readEdgeErrorEnvelope(error);
+    const code = envelope?.error?.code
+      ?? ERROR_CODES.find((candidate) => messageFromUnknownError(error).includes(candidate));
+    const message = envelope?.error?.message ?? messageFromUnknownError(error);
+
+    if (code === "AUTH_REQUIRED" || message.includes("ACCOUNT_DELETED") || message.includes("SOCIAL_AUTH_REQUIRED")) {
+      await clearSupabaseSession(this.client).catch(() => undefined);
+      return new AuthenticationRequiredError();
     }
-
-    return this.toSnapshot(data as DatabaseSnapshot);
+    if (code && (ERROR_CODES as readonly string[]).includes(code)) {
+      return new OceanError(code as OceanErrorCode, message);
+    }
+    if (error instanceof Error) return error;
+    const wrapped = new Error(message);
+    if (isRecord(error) && typeof error.code === "string") {
+      Object.assign(wrapped, { code: error.code });
+    }
+    return wrapped;
   }
 
   private toSnapshot(snapshot: DatabaseSnapshot): OceanSnapshot {
@@ -253,6 +376,9 @@ export class SupabaseOceanGateway implements OceanGateway {
       nextCatchAt: snapshot.nextCatchAt ? new Date(snapshot.nextCatchAt).getTime() : null,
       bottleAvailable: snapshot.bottleAvailable,
       waitingForNews: snapshot.waitingForNews ?? false,
+      bottleArrivedEnabled: typeof snapshot.bottleArrivedEnabled === "boolean"
+        ? snapshot.bottleArrivedEnabled
+        : undefined,
       activeBottle,
       keptBottles: snapshot.keptBottles.map((message) => ({
         id: message.id,

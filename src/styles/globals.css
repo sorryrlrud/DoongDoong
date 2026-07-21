@@ -1,11 +1,16 @@
-@import url("https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&family=Noto+Sans:wght@400..900&family=Noto+Sans+Arabic:wght@400..900&family=Noto+Sans+Devanagari:wght@400..900&family=Noto+Sans+JP:wght@400..900&family=Noto+Sans+SC:wght@400..900&family=Noto+Sans+TC:wght@400..900&display=swap");
-
 :root {
   color: #173f54;
   background: #f7edcf;
-  --font-ui: "Gowun Dodum", "Noto Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-display: "Gaegu", "Gowun Dodum", "Noto Sans", sans-serif;
-  --font-letter: "Gowun Batang", "Noto Sans", Georgia, serif;
+  /*
+   * Keep the first paint self-contained. The former Google Fonts import
+   * requested every supported-script family (and hundreds of kilobytes) on
+   * every visit, even though the device already provides the appropriate
+   * system font for its selected locale. These stacks preserve the intended
+   * Korean/CJK character while avoiding a render-blocking third-party hop.
+   */
+  --font-ui: "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", "Noto Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", "Noto Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-letter: "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", "Noto Sans", Georgia, serif;
   font-family: var(--font-ui);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -1465,6 +1470,80 @@ h3,
 
 .setting-section--row p {
   margin-bottom: 0;
+}
+
+.setting-hint {
+  margin-top: 10px;
+  color: var(--coral-dark) !important;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.55;
+}
+
+.settings-account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.settings-dialog-layer {
+  position: fixed;
+  z-index: 110;
+  inset: 0;
+  display: grid;
+  padding: 16px;
+  place-items: center;
+  background: rgba(23, 63, 84, 0.62);
+  backdrop-filter: blur(3px);
+  animation: backdrop-in 180ms ease-out both;
+}
+
+.settings-dialog {
+  width: min(470px, calc(100vw - 32px));
+  max-height: min(85dvh, 560px);
+  padding: clamp(24px, 6vw, 38px);
+  overflow: auto;
+  border: 2px solid var(--ocean-ink);
+  border-radius: 16px;
+  background: var(--paper-light);
+  box-shadow: 8px 8px 0 rgba(23, 63, 84, 0.35);
+  animation: dialog-in 200ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.settings-dialog h2 {
+  margin-bottom: 8px;
+  font-size: 25px;
+  letter-spacing: -0.04em;
+}
+
+.settings-dialog > p {
+  color: rgba(23, 63, 84, 0.72);
+  line-height: 1.65;
+}
+
+.settings-delete-confirmation {
+  display: grid;
+  margin-top: 22px;
+  gap: 7px;
+  font-weight: 800;
+}
+
+.settings-delete-confirmation input {
+  min-height: 46px;
+  padding: 8px 11px;
+  border: 2px solid var(--ocean-ink);
+  border-radius: 8px;
+  background: white;
+  color: var(--ocean-ink);
+  font: inherit;
+}
+
+.settings-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 24px;
+  gap: 10px;
 }
 
 .social-connections {
@@ -3245,6 +3324,42 @@ h3,
   display: flex;
   justify-content: center;
   gap: 8px;
+}
+
+.report-field {
+  display: grid;
+  margin: 12px 0;
+  gap: 5px;
+  color: var(--ocean-ink);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: start;
+}
+
+.report-field select {
+  min-height: 40px;
+  padding: 6px 8px;
+  border: 1.5px solid var(--ocean-ink);
+  border-radius: 7px;
+  background: var(--paper-light);
+  color: var(--ocean-ink);
+  font: inherit;
+}
+
+.report-block-author {
+  display: flex;
+  margin: 0 0 13px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.report-block-author input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--coral-dark);
 }
 
 .scene-report {

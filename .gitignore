@@ -7,3 +7,7 @@ coverage/
 .env.*
 !.env.example
 node_modules/.tmp/
+supabase/.branches/
+supabase/.temp/
+playwright-report/
+test-results/

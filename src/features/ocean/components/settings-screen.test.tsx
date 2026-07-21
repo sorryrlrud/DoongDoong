@@ -18,6 +18,12 @@ describe("SettingsScreen", () => {
         onAppPreferencesChange={async () => undefined}
         onLinkIdentity={async () => undefined}
         onSignOut={async () => undefined}
+        notificationEnabled={false}
+        onNotificationPreferenceChange={async (enabled) => enabled}
+        canInstall={false}
+        showIosInstallHelp={false}
+        onInstall={async () => undefined}
+        onDeleteAccount={async () => undefined}
       />,
     );
 
@@ -27,5 +33,7 @@ describe("SettingsScreen", () => {
     expect(html).toContain("Google");
     expect(html).toContain("Apple");
     expect(html.match(/연동하기/g)).toHaveLength(2);
+    expect(html).toContain("병 도착 알림");
+    expect(html).toContain("계정 삭제");
   });
 });

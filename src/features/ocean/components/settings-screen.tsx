@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { oceanGateway } from "@/features/ocean/services/runtime";
 import { COUNTRY_OPTIONS, countryName } from "@/features/ocean/countries";
 import type { OceanSnapshot } from "@/features/ocean/types/ocean";
@@ -7,6 +7,10 @@ import { useI18n } from "@/i18n/i18n";
 import type { MessageKey } from "@/i18n/messages/en";
 import { SUPPORTED_LANGUAGES, type LanguageCode } from "@/i18n/languages";
 import type { SocialAuthProvider } from "@/features/auth/types/auth";
+import {
+  PushSetupError,
+  notificationPermission,
+} from "@/features/ocean/services/push-notifications";
 
 const SOCIAL_PROVIDERS: Array<{
   id: SocialAuthProvider;
@@ -34,6 +38,12 @@ interface SettingsScreenProps {
   }) => Promise<void>;
   onLinkIdentity: (provider: SocialAuthProvider) => Promise<void>;
   onSignOut: () => Promise<void>;
+  notificationEnabled: boolean;
+  onNotificationPreferenceChange: (enabled: boolean) => Promise<boolean>;
+  canInstall: boolean;
+  showIosInstallHelp: boolean;
+  onInstall: () => Promise<void>;
+  onDeleteAccount: () => Promise<void>;
 }
 
 export function SettingsScreen({
@@ -49,6 +59,12 @@ export function SettingsScreen({
   onAppPreferencesChange,
   onLinkIdentity,
   onSignOut,
+  notificationEnabled,
+  onNotificationPreferenceChange,
+  canInstall,
+  showIosInstallHelp,
+  onInstall,
+  onDeleteAccount,
 }: SettingsScreenProps) {
   const { t } = useI18n();
   const [draftCountryCode, setDraftCountryCode] = useState(countryCode);
@@ -61,12 +77,29 @@ export function SettingsScreen({
   const [error, setError] = useState<MessageKey | null>(null);
   const [signingOut, setSigningOut] = useState(false);
   const [linkingProvider, setLinkingProvider] = useState<SocialAuthProvider | null>(null);
+  const [savingNotifications, setSavingNotifications] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [confirmingDeletion, setConfirmingDeletion] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const deleteConfirmationRef = useRef<HTMLInputElement>(null);
+  const deleteTriggerRef = useRef<HTMLButtonElement>(null);
+  const wasConfirmingDeletion = useRef(false);
+  const pushPermission = notificationPermission();
+  const pushSupported = pushPermission !== "unsupported";
 
   useEffect(() => {
     setDraftCountryCode(countryCode);
     setSavedCountryCode(countryCode);
   }, [countryCode]);
   useEffect(() => setDraftLanguageCode(languageCode), [languageCode]);
+  useEffect(() => {
+    if (confirmingDeletion) {
+      deleteConfirmationRef.current?.focus();
+    } else if (wasConfirmingDeletion.current) {
+      deleteTriggerRef.current?.focus();
+    }
+    wasConfirmingDeletion.current = confirmingDeletion;
+  }, [confirmingDeletion]);
 
   const syncDefaultSignature = async () => {
     setError(null);
@@ -133,6 +166,61 @@ export function SettingsScreen({
     } catch {
       setError("settings.socialError");
       setLinkingProvider(null);
+    }
+  };
+
+  const saveNotificationPreference = async (enabled: boolean) => {
+    if (savingNotifications || (!pushSupported && enabled)) return;
+    setSavingNotifications(true);
+    setError(null);
+    setNotice(null);
+    try {
+      await onNotificationPreferenceChange(enabled);
+      setNotice(enabled ? "settings.notificationsEnabled" : "settings.notificationsDisabled");
+    } catch (caught) {
+      if (caught instanceof PushSetupError) {
+        const problemKeys: Record<PushSetupError["problem"], MessageKey> = {
+          unsupported: "settings.notificationsUnsupported",
+          "permission-denied": "settings.notificationsPermissionDenied",
+          "missing-public-key": "settings.notificationsUnavailable",
+          "subscription-invalid": "settings.notificationsUnavailable",
+        };
+        setError(problemKeys[caught.problem]);
+      } else {
+        setError("settings.notificationsError");
+      }
+    } finally {
+      setSavingNotifications(false);
+    }
+  };
+
+  const deleteAccount = async () => {
+    if (deletingAccount || deleteConfirmation !== "DELETE") return;
+    setDeletingAccount(true);
+    setError(null);
+    try {
+      await onDeleteAccount();
+    } catch {
+      setError("settings.deleteError");
+      setDeletingAccount(false);
+    }
+  };
+
+  const trapDeletionDialogFocus = (event: KeyboardEvent<HTMLElement>) => {
+    if (event.key !== "Tab") return;
+    const focusable = [...event.currentTarget.querySelectorAll<HTMLElement>(
+      "button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href]",
+    )];
+    const first = focusable[0];
+    const last = focusable.at(-1);
+    if (!first || !last) return;
+
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
     }
   };
 
@@ -280,21 +368,121 @@ export function SettingsScreen({
           </button>
         </section>
 
+        <section className="setting-section setting-section--row" aria-labelledby="setting-notifications-title">
+          <div>
+            <h2 id="setting-notifications-title">{t("settings.notificationsTitle")}</h2>
+            <p>{t("settings.notificationsDescription")}</p>
+            {!pushSupported ? <p className="setting-hint">{t("settings.notificationsUnsupported")}</p> : null}
+            {pushPermission === "denied" ? <p className="setting-hint">{t("settings.notificationsPermissionDenied")}</p> : null}
+          </div>
+          <button
+            className={notificationEnabled ? "toggle toggle--on" : "toggle"}
+            type="button"
+            role="switch"
+            aria-checked={notificationEnabled}
+            disabled={savingNotifications || (!pushSupported && !notificationEnabled)}
+            onClick={() => void saveNotificationPreference(!notificationEnabled)}
+          >
+            <span aria-hidden="true" />
+            <strong>{notificationEnabled ? t("common.on") : t("common.off")}</strong>
+          </button>
+        </section>
+
+        {canInstall || showIosInstallHelp ? (
+          <section className="setting-section setting-section--row" aria-labelledby="setting-install-title">
+            <div>
+              <h2 id="setting-install-title">{t("settings.installTitle")}</h2>
+              <p>{showIosInstallHelp ? t("settings.iosInstallDescription") : t("settings.installDescription")}</p>
+            </div>
+            {canInstall ? (
+              <button className="button button--secondary" type="button" onClick={() => void onInstall()}>
+                {t("settings.install")}
+              </button>
+            ) : null}
+          </section>
+        ) : null}
+
         <section className="setting-section setting-section--row" aria-labelledby="setting-account-title">
           <div>
             <h2 id="setting-account-title">{t("settings.accountTitle")}</h2>
             <p>{t("settings.accountDescription")}</p>
           </div>
-          <button
-            className="button button--ghost"
-            type="button"
-            disabled={signingOut}
-            onClick={() => void signOut()}
-          >
-            {signingOut ? t("settings.signingOut") : t("settings.signOut")}
-          </button>
+          <div className="settings-account-actions">
+            <button
+              className="button button--ghost"
+              type="button"
+              disabled={signingOut || deletingAccount}
+              onClick={() => void signOut()}
+            >
+              {signingOut ? t("settings.signingOut") : t("settings.signOut")}
+            </button>
+            <button
+              ref={deleteTriggerRef}
+              className="button button--danger"
+              type="button"
+              disabled={signingOut || deletingAccount}
+              onClick={() => {
+                setDeleteConfirmation("");
+                setConfirmingDeletion(true);
+              }}
+            >
+              {t("settings.deleteAccount")}
+            </button>
+          </div>
         </section>
       </div>
+
+      {confirmingDeletion ? (
+        <div
+          className="settings-dialog-layer"
+          role="presentation"
+          onKeyDown={(event) => {
+            if (event.key === "Escape" && !deletingAccount) setConfirmingDeletion(false);
+          }}
+        >
+          <section
+            className="settings-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-account-title"
+            aria-describedby="delete-account-description"
+            onKeyDown={trapDeletionDialogFocus}
+          >
+            <h2 id="delete-account-title">{t("settings.deleteConfirmTitle")}</h2>
+            <p id="delete-account-description">{t("settings.deleteConfirmDescription")}</p>
+            <label className="settings-delete-confirmation" htmlFor="delete-account-confirmation">
+              <span>{t("settings.deleteConfirmationLabel")}</span>
+              <input
+                ref={deleteConfirmationRef}
+                id="delete-account-confirmation"
+                value={deleteConfirmation}
+                onChange={(event) => setDeleteConfirmation(event.target.value)}
+                autoComplete="off"
+                spellCheck={false}
+                disabled={deletingAccount}
+              />
+            </label>
+            <div className="settings-dialog__actions">
+              <button
+                className="button button--ghost"
+                type="button"
+                disabled={deletingAccount}
+                onClick={() => setConfirmingDeletion(false)}
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                className="button button--danger"
+                type="button"
+                disabled={deletingAccount || deleteConfirmation !== "DELETE"}
+                onClick={() => void deleteAccount()}
+              >
+                {deletingAccount ? t("settings.deleting") : t("settings.deleteAccount")}
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </section>
   );
 }

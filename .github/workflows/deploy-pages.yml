@@ -26,6 +26,46 @@ jobs:
           node-version: 24
           cache: npm
 
+      # Do not replace the currently live Pages bundle with one that calls the
+      # Edge sender until the separately dispatched Phase 1 backend release has
+      # completed. A failed probe leaves the previous Pages deployment live.
+      - name: Verify phase-one backend before shipping the Edge client
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$VITE_SUPABASE_URL"
+          test -n "$VITE_SUPABASE_PUBLISHABLE_KEY"
+          base_url="${VITE_SUPABASE_URL%/}"
+
+          edge_status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+            --request OPTIONS "$base_url/functions/v1/send-message" \
+            --header 'Origin: https://sorryrlrud.github.io')"
+          if [ "$edge_status" != '200' ]; then
+            echo "Phase-one send-message Edge endpoint is not ready (HTTP $edge_status)."
+            exit 1
+          fi
+
+          contract_file="$(mktemp)"
+          trap 'rm -f "$contract_file"' EXIT
+          contract_status="$(curl --silent --show-error --output "$contract_file" --write-out '%{http_code}' \
+            --request POST "$base_url/rest/v1/rpc/ocean_pwa_contract_status" \
+            --header "apikey: $VITE_SUPABASE_PUBLISHABLE_KEY")"
+          if [ "$contract_status" != '200' ]; then
+            echo "Phase-one database contract is not ready (HTTP $contract_status)."
+            exit 1
+          fi
+
+          CONTRACT_FILE="$contract_file" node --input-type=module <<'NODE'
+          import { readFile } from 'node:fs/promises';
+
+          const status = JSON.parse(await readFile(process.env.CONTRACT_FILE, 'utf8'));
+          if (status?.sendMessage !== 'edge-v1') {
+            throw new Error('The deployed database does not advertise the Edge send contract.');
+          }
+          NODE
+
       - name: Install dependencies
         run: npm ci
 
@@ -40,6 +80,7 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_VAPID_PUBLIC_KEY: ${{ secrets.VITE_VAPID_PUBLIC_KEY }}
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5

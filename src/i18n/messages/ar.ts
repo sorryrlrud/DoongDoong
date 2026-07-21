@@ -1,6 +1,8 @@
 import type { Messages } from "./en";
+import { pwaMessages } from "./pwa";
 
 export const ar: Messages = {
+  ...pwaMessages.ar,
   "settings.socialTitle":"الحسابات المرتبطة","settings.socialDescription":"اعرض حسابات تسجيل الدخول المرتبطة بـ DOONGDOONG أو أضف حسابًا آخر.","settings.socialConnected":"مرتبط","settings.socialConnect":"ربط","settings.socialConnecting":"جارٍ الربط…","settings.socialNotice":"تُستخدم الحسابات المرتبطة لتسجيل الدخول فقط، وتبقى رسائلك مجهولة.","settings.socialError":"تعذّر ربط الحساب. تحقّق منه وحاول مجددًا.",
   "brand.name":"DOONGDOONG","common.skip":"الانتقال إلى المحتوى الرئيسي","common.home":"العودة إلى شاطئ DOONGDOONG","common.cancel":"إلغاء","common.continue":"متابعة","common.back":"رجوع","common.retry":"إعادة المحاولة","common.optional":"اختياري","common.on":"تشغيل","common.off":"إيقاف","common.settings":"الإعدادات","fatal.title":"تعذّر فتح البحر.","fatal.load":"تعذّر تجهيز البحر. حاول مجددًا بعد قليل.","fatal.reload":"الفتح مجددًا","loading.sea":"نستدعي البحر…",
   "auth.eyebrow":"لقاء هادئ بلا أسماء","auth.title":"سجّل الدخول لفتح البحر","auth.description":"اختر حسابًا واحدًا. لن تظهر بيانات تسجيل الدخول في الرسائل أو للمستلمين.","auth.providers":"خيارات تسجيل الدخول الاجتماعي","auth.google":"المتابعة باستخدام Google","auth.apple":"المتابعة باستخدام Apple","auth.naver":"المتابعة باستخدام NAVER","auth.redirecting":"جارٍ فتح تسجيل الدخول…","auth.notice":"نستخدم حسابك فقط لتسجيل الدخول وأمان الخدمة، ولا يظهر في رسائلك أبدًا.","auth.session":"جارٍ التحقق من تسجيل الدخول…","auth.error":"تعذّر تسجيل الدخول. حاول مجددًا.",

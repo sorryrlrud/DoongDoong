@@ -9,6 +9,27 @@ export type AdminMessageStatus =
 
 export type AdminResetDirection = "send" | "receive" | "both";
 
+export type AdminUserStatus = "active" | "suspended" | "banned";
+
+export const ADMIN_REPORT_REASONS = [
+  "personal_info",
+  "sexual",
+  "hate",
+  "harassment",
+  "self_harm",
+  "spam",
+  "other",
+] as const;
+
+export type AdminReportReason = (typeof ADMIN_REPORT_REASONS)[number];
+export type AdminReportStatus = "open" | "resolved";
+export type AdminReportResolution =
+  | "dismiss_and_redrift"
+  | "remove_message"
+  | "remove_and_suspend_author"
+  | "remove_and_ban_author";
+export type AdminReportMessageStatus = Exclude<AdminMessageStatus, "all">;
+
 export interface AdminStats {
   totalUsers: number;
   activeUsers: number;
@@ -85,6 +106,36 @@ export interface AdminDashboardFilters {
   status?: AdminMessageStatus;
 }
 
+export interface AdminReportMessage {
+  body: string;
+  signature: string | null;
+  status: AdminReportMessageStatus;
+  authorCountryCode: string | null;
+}
+
+export interface AdminReportRow {
+  reportId: string;
+  messageId: string;
+  reporterId: string | null;
+  authorId: string | null;
+  reason: AdminReportReason;
+  status: AdminReportStatus;
+  createdAt: string;
+  message: AdminReportMessage;
+  reasonCounts: Partial<Record<AdminReportReason, number>>;
+}
+
+export interface AdminReportPage {
+  reports: AdminReportRow[];
+  nextCursor: string | null;
+}
+
+export interface AdminReportListOptions {
+  status?: AdminReportStatus;
+  limit?: number;
+  cursor?: string | null;
+}
+
 export interface AdminAuthInfo {
   userId: string;
 }
@@ -92,6 +143,9 @@ export interface AdminAuthInfo {
 export interface AdminGateway {
   getAuthInfo(): Promise<AdminAuthInfo>;
   getDashboard(filters?: AdminDashboardFilters): Promise<AdminDashboard>;
+  listReports(options?: AdminReportListOptions): Promise<AdminReportPage>;
+  resolveReport(reportId: string, resolution: AdminReportResolution, note?: string): Promise<void>;
+  updateUserStatus(userId: string, status: AdminUserStatus, reason?: string): Promise<void>;
   resetUserLimits(userId: string, direction: AdminResetDirection): Promise<void>;
   makeMessageAvailable(messageId: string): Promise<void>;
   deleteUser(userId: string): Promise<void>;

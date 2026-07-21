@@ -48,11 +48,17 @@ const unavailableOceanGateway: OceanGateway = {
   catchBottle: missingConfiguration,
   openBottle: missingConfiguration,
   resolveBottle: missingConfiguration,
+  reportBottle: missingConfiguration,
   completeOnboarding: missingConfiguration,
   updateProfile: missingConfiguration,
   updateDefaultSignature: missingConfiguration,
   updateAppPreferences: missingConfiguration,
   updateSea: missingConfiguration,
+  updateTimeZone: missingConfiguration,
+  upsertPushSubscription: missingConfiguration,
+  deletePushSubscription: missingConfiguration,
+  updateNotificationPreferences: missingConfiguration,
+  deleteAccount: missingConfiguration,
 };
 
 export const oceanGateway: OceanGateway = supabaseClient

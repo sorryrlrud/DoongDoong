@@ -41,6 +41,68 @@ describe("SupabaseAdminGateway", () => {
     expect(dashboard.usage).toEqual({ supabase: {}, azureTranslator: {} });
   });
 
+  it("loads the open moderation queue through its private RPC", async () => {
+    const { client, rpc } = createClient();
+    rpc.mockResolvedValueOnce({ data: { reports: [], nextCursor: null }, error: null });
+    const gateway = new SupabaseAdminGateway(client as never);
+
+    await expect(gateway.listReports()).resolves.toEqual({ reports: [], nextCursor: null });
+
+    expect(rpc).toHaveBeenCalledWith("admin_list_reports", {
+      p_status: "open",
+      p_limit: 50,
+      p_cursor: null,
+    });
+  });
+
+  it("passes an explicit report cursor and page size to continue the moderation queue", async () => {
+    const { client, rpc } = createClient();
+    rpc.mockResolvedValueOnce({ data: { reports: [], nextCursor: null }, error: null });
+    const gateway = new SupabaseAdminGateway(client as never);
+
+    await gateway.listReports({
+      status: "open",
+      limit: 25,
+      cursor: "2026-07-21T00:00:00.000Z",
+    });
+
+    expect(rpc).toHaveBeenCalledWith("admin_list_reports", {
+      p_status: "open",
+      p_limit: 25,
+      p_cursor: "2026-07-21T00:00:00.000Z",
+    });
+  });
+
+  it("resolves a report with its chosen moderation action and optional audit note", async () => {
+    const { client, rpc } = createClient();
+    const gateway = new SupabaseAdminGateway(client as never);
+
+    await gateway.resolveReport(
+      "report-id",
+      "remove_and_ban_author",
+      "  repeated abusive messages  ",
+    );
+
+    expect(rpc).toHaveBeenCalledWith("admin_resolve_report", {
+      p_report_id: "report-id",
+      p_resolution: "remove_and_ban_author",
+      p_note: "repeated abusive messages",
+    });
+  });
+
+  it("updates a non-admin user's moderation status through the audited RPC", async () => {
+    const { client, rpc } = createClient();
+    const gateway = new SupabaseAdminGateway(client as never);
+
+    await gateway.updateUserStatus("user-id", "suspended", "review pending");
+
+    expect(rpc).toHaveBeenCalledWith("admin_update_user_status", {
+      p_user_id: "user-id",
+      p_status: "suspended",
+      p_reason: "review pending",
+    });
+  });
+
   it("calls the scoped reset RPC", async () => {
     const { client, rpc } = createClient();
     const gateway = new SupabaseAdminGateway(client as never);

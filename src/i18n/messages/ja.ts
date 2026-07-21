@@ -1,6 +1,8 @@
 import type { Messages } from "./en";
+import { pwaMessages } from "./pwa";
 
 export const ja: Messages = {
+  ...pwaMessages.ja,
   "settings.socialTitle":"ソーシャルログイン連携","settings.socialDescription":"DOONGDOONGに連携済みのログインアカウントを確認したり、別のアカウントを追加できます。","settings.socialConnected":"連携済み","settings.socialConnect":"連携する","settings.socialConnecting":"連携中…","settings.socialNotice":"連携したアカウントはログインにのみ使用し、手紙には表示しません。","settings.socialError":"アカウントを連携できませんでした。アカウントを確認してもう一度お試しください。",
   "brand.name":"DOONGDOONG","common.skip":"本文へスキップ","common.home":"DOONGDOONGの浜辺に戻る","common.cancel":"キャンセル","common.continue":"次へ","common.back":"戻る","common.retry":"もう一度試す","common.optional":"任意","common.on":"オン","common.off":"オフ","common.settings":"設定",
   "fatal.title":"海を開けませんでした。","fatal.load":"海のデータを準備できませんでした。しばらくしてからもう一度お試しください。","fatal.reload":"もう一度開く","loading.sea":"海を呼び寄せています…",

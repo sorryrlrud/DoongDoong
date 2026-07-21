@@ -23,6 +23,7 @@ interface HomeScreenProps {
 
 export function HomeScreen({ snapshot, catching, onNavigate, onCatch, onSeagull }: HomeScreenProps) {
   const { t } = useI18n();
+  const hasAssignedBottle = Boolean(snapshot.activeBottle);
   return (
     <section className="shore-scene" aria-label={t("home.shore")}>
       <PageHeading className="sr-only">
@@ -48,20 +49,20 @@ export function HomeScreen({ snapshot, catching, onNavigate, onCatch, onSeagull 
         </div>
       )}
 
-      {snapshot.bottleAvailable ? (
+      {hasAssignedBottle ? (
         <button
           className={catching ? "scene-object scene-object--bottle scene-object--lifting" : "scene-object scene-object--bottle"}
           type="button"
           onClick={() => void onCatch()}
           disabled={catching}
-          aria-label={snapshot.activeBottle ? t("home.heldBottle") : t("home.pickBottle")}
+          aria-label={t("home.heldBottle")}
           aria-busy={catching}
         >
           <img src={ARRIVED_BOTTLE_IMAGE} alt="" />
         </button>
       ) : null}
 
-      {!snapshot.bottleAvailable && !snapshot.activeBottle ? (
+      {!hasAssignedBottle ? (
         <button
           className="waiting-news"
           type="button"
@@ -97,7 +98,7 @@ export function HomeScreen({ snapshot, catching, onNavigate, onCatch, onSeagull 
       </button>
 
       <p className="sr-only" aria-live="polite">
-        {snapshot.bottleAvailable ? t("home.available") : t("home.unavailable")}
+        {hasAssignedBottle ? t("home.available") : t("home.unavailable")}
       </p>
     </section>
   );

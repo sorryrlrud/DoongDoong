@@ -1,46 +1,70 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { AppShell } from "@/app/app-shell";
-import { AdminScreen } from "@/features/admin/components/admin-screen";
-import { LoginScreen } from "@/features/auth/components/login-screen";
-import { AdminLoginScreen } from "@/features/auth/components/admin-login-screen";
+import type { AdminGateway } from "@/features/admin/types/admin";
 import type { AuthGateway, AuthUser, SocialAuthProvider } from "@/features/auth/types/auth";
 import {
   loadPreferences,
+  resetPreferences,
   savePreferences,
   shouldShowOnboarding,
   type AppPreferences,
 } from "@/app/preferences";
 import { readAppRoute, useHashRoute } from "@/app/use-hash-route";
-import { CatchScreen } from "@/features/ocean/components/catch-screen";
-import { GuideScreen } from "@/features/ocean/components/guide-screen";
+import { LoginScreen } from "@/features/auth/components/login-screen";
 import { HomeScreen } from "@/features/ocean/components/home-screen";
-import { KeptScreen } from "@/features/ocean/components/kept-screen";
-import { Onboarding } from "@/features/ocean/components/onboarding";
-import { SettingsScreen } from "@/features/ocean/components/settings-screen";
-import { WriteScreen } from "@/features/ocean/components/write-screen";
-import {
-  adminAuthGateway,
-  adminGateway,
-  authGateway,
-  oceanGateway,
-} from "@/features/ocean/services/runtime";
-import { AuthenticationRequiredError } from "@/features/ocean/services/supabase-client";
-import type { OceanSnapshot } from "@/features/ocean/types/ocean";
-import { BEACH_IMAGE } from "@/shared/brand";
+import { AuthenticationRequiredError } from "@/features/ocean/services/errors";
+import type { OceanGateway, OceanSnapshot } from "@/features/ocean/types/ocean";
+import { LOGIN_BEACH_IMAGE } from "@/shared/brand";
 import { playIncomingWave, playSeagullCall } from "@/features/ocean/services/ocean-audio";
 import { recommendedSeaForCountry } from "@/features/ocean/countries";
+import {
+  clearBrowserPushSubscription,
+  getExistingPushSubscription,
+  isIosDevice,
+  isStandalonePwa,
+  onPushSubscriptionChange,
+  requestPushSubscription,
+} from "@/features/ocean/services/push-notifications";
+import { getBrowserTimeZone } from "@/features/ocean/services/time-zone";
 import { I18nProvider, useI18n } from "@/i18n/i18n";
 
 const wait = (duration: number) => new Promise((resolve) => window.setTimeout(resolve, duration));
+
+const AdminScreen = lazy(async () => ({ default: (await import("@/features/admin/components/admin-screen")).AdminScreen }));
+const AdminLoginScreen = lazy(async () => ({ default: (await import("@/features/auth/components/admin-login-screen")).AdminLoginScreen }));
+const CatchScreen = lazy(async () => ({ default: (await import("@/features/ocean/components/catch-screen")).CatchScreen }));
+const GuideScreen = lazy(async () => ({ default: (await import("@/features/ocean/components/guide-screen")).GuideScreen }));
+const KeptScreen = lazy(async () => ({ default: (await import("@/features/ocean/components/kept-screen")).KeptScreen }));
+const Onboarding = lazy(async () => ({ default: (await import("@/features/ocean/components/onboarding")).Onboarding }));
+const SettingsScreen = lazy(async () => ({ default: (await import("@/features/ocean/components/settings-screen")).SettingsScreen }));
+const WriteScreen = lazy(async () => ({ default: (await import("@/features/ocean/components/write-screen")).WriteScreen }));
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+}
 
 interface AppExperienceProps {
   preferences: AppPreferences;
   updatePreferences: (next: AppPreferences) => void;
   syncServerPreferences: (snapshot: OceanSnapshot) => void;
+  canInstall: boolean;
+  showIosInstallHelp: boolean;
+  onInstall: () => Promise<void>;
+}
+
+interface RuntimeGateways {
+  authGateway: AuthGateway | null;
+  adminAuthGateway: AuthGateway | null;
+  oceanGateway: OceanGateway;
+  adminGateway: AdminGateway | null;
 }
 
 export function App() {
   const [preferences, setPreferences] = useState<AppPreferences>(loadPreferences);
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [runtime, setRuntime] = useState<RuntimeGateways | null>(null);
+  const [runtimeLoadFailed, setRuntimeLoadFailed] = useState(false);
   const updatePreferences = useCallback((next: AppPreferences) => {
     setPreferences(next);
     savePreferences(next);
@@ -72,6 +96,49 @@ export function App() {
       return next;
     });
   }, []);
+  useEffect(() => {
+    const onBeforeInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      setInstallPrompt(event as BeforeInstallPromptEvent);
+    };
+    const onAppInstalled = () => setInstallPrompt(null);
+    window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+    window.addEventListener("appinstalled", onAppInstalled);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+      window.removeEventListener("appinstalled", onAppInstalled);
+    };
+  }, []);
+  useEffect(() => {
+    let active = true;
+    // The login shell does not need the database/realtime client. Let the
+    // LCP content paint before loading that dependency in the background.
+    const timer = window.setTimeout(() => {
+      void import("@/features/ocean/services/runtime")
+        .then((loaded) => {
+          if (!active) return;
+          setRuntime({
+            authGateway: loaded.authGateway,
+            adminAuthGateway: loaded.adminAuthGateway,
+            oceanGateway: loaded.oceanGateway,
+            adminGateway: loaded.adminGateway,
+          });
+        })
+        .catch(() => {
+          if (active) setRuntimeLoadFailed(true);
+        });
+    }, 250);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, []);
+  const install = useCallback(async () => {
+    if (!installPrompt) return;
+    await installPrompt.prompt();
+    await installPrompt.userChoice;
+    setInstallPrompt(null);
+  }, [installPrompt]);
 
   return (
     <I18nProvider languageCode={preferences.languageCode}>
@@ -79,12 +146,20 @@ export function App() {
         preferences={preferences}
         updatePreferences={updatePreferences}
         syncServerPreferences={syncServerPreferences}
+        canInstall={installPrompt !== null}
+        showIosInstallHelp={isIosDevice() && !isStandalonePwa()}
+        onInstall={install}
+        runtime={runtime}
+        runtimeLoadFailed={runtimeLoadFailed}
       />
     </I18nProvider>
   );
 }
 
-type AuthenticatedAppProps = AppExperienceProps;
+interface AuthenticatedAppProps extends AppExperienceProps {
+  runtime: RuntimeGateways | null;
+  runtimeLoadFailed: boolean;
+}
 
 const hasOAuthError = (): boolean => {
   const query = new URLSearchParams(window.location.search);
@@ -95,14 +170,32 @@ const hasOAuthError = (): boolean => {
 const hasPublicSocialIdentity = (user: AuthUser | null | undefined): boolean =>
   user?.providers.some((provider) => ["google", "apple", "custom:naver"].includes(provider)) ?? false;
 
+function DeferredScreenFallback() {
+  const { t } = useI18n();
+  return (
+    <main className="loading-screen" aria-live="polite">
+      <img src={LOGIN_BEACH_IMAGE} width="768" height="512" alt="" />
+      <strong>{t("brand.name")}</strong>
+      <span>{t("loading.sea")}</span>
+    </main>
+  );
+}
+
 function AuthenticatedApp({
   preferences,
   updatePreferences,
   syncServerPreferences,
+  canInstall,
+  showIosInstallHelp,
+  onInstall,
+  runtime,
+  runtimeLoadFailed,
 }: AuthenticatedAppProps) {
   const { t } = useI18n();
   const { route, navigate } = useHashRoute();
   const isAdminRoute = route === "admin";
+  const authGateway = runtime?.authGateway ?? null;
+  const adminAuthGateway = runtime?.adminAuthGateway ?? null;
   const activeAuthGateway = isAdminRoute ? adminAuthGateway : authGateway;
   const [authState, setAuthState] = useState<{
     gateway: AuthGateway | null;
@@ -198,7 +291,7 @@ function AuthenticatedApp({
     setAuthState((current) => ({ ...current, user: null }));
   }, []);
 
-  if (!activeAuthGateway) {
+  if (runtimeLoadFailed || (runtime && !activeAuthGateway)) {
     return (
       <main className="fatal-state">
         <strong>{t("brand.name")}</strong>
@@ -208,13 +301,14 @@ function AuthenticatedApp({
     );
   }
 
-  if (user === undefined) {
+  if (!runtime || user === undefined) {
     return (
-      <main className="loading-screen" aria-live="polite">
-        <img src={BEACH_IMAGE} alt="" />
-        <strong>{t("brand.name")}</strong>
-        <span>{t("auth.session")}</span>
-      </main>
+      <LoginScreen
+        busyProvider={null}
+        error={null}
+        sessionPending
+        onSignIn={() => undefined}
+      />
     );
   }
 
@@ -222,26 +316,34 @@ function AuthenticatedApp({
 
   if (isAdminRoute && !hasGitHubIdentity) {
     return (
-      <AdminLoginScreen
-        busy={adminBusy}
-        error={authFailed}
-        onSignIn={() => void signInAdmin()}
-        onExit={() => navigate("home")}
-      />
+      <Suspense fallback={<DeferredScreenFallback />}>
+        <AdminLoginScreen
+          busy={adminBusy}
+          error={authFailed}
+          onSignIn={() => void signInAdmin()}
+          onExit={() => navigate("home")}
+        />
+      </Suspense>
     );
   }
 
   if (isAdminRoute && user) {
-    return <AdminScreen gateway={adminGateway} onExit={() => void signOutAdmin()} />;
+    return (
+      <Suspense fallback={<DeferredScreenFallback />}>
+        <AdminScreen gateway={runtime.adminGateway} onExit={() => void signOutAdmin()} />
+      </Suspense>
+    );
   }
 
   if (user === null || !hasPublicSocialIdentity(user)) {
     return (
-      <LoginScreen
-        busyProvider={busyProvider}
-        error={authFailed ? t("auth.error") : null}
-        onSignIn={(provider) => void signIn(provider)}
-      />
+      <Suspense fallback={<DeferredScreenFallback />}>
+        <LoginScreen
+          busyProvider={busyProvider}
+          error={authFailed ? t("auth.error") : null}
+          onSignIn={(provider) => void signIn(provider)}
+        />
+      </Suspense>
     );
   }
 
@@ -252,18 +354,23 @@ function AuthenticatedApp({
       preferences={preferences}
       updatePreferences={updatePreferences}
       syncServerPreferences={syncServerPreferences}
+      canInstall={canInstall}
+      showIosInstallHelp={showIosInstallHelp}
+      onInstall={onInstall}
       onLinkIdentity={linkIdentity}
       onSignOut={signOut}
       onAuthRequired={handleAuthRequired}
+      oceanGateway={runtime.oceanGateway}
     />
   );
 }
 
-interface AuthenticatedExperienceProps extends AuthenticatedAppProps {
+interface AuthenticatedExperienceProps extends AppExperienceProps {
   user: AuthUser;
   onLinkIdentity: (provider: SocialAuthProvider) => Promise<void>;
   onSignOut: () => Promise<void>;
   onAuthRequired: () => void;
+  oceanGateway: OceanGateway;
 }
 
 function AppExperience({
@@ -271,9 +378,13 @@ function AppExperience({
   preferences,
   updatePreferences,
   syncServerPreferences,
+  canInstall,
+  showIosInstallHelp,
+  onInstall,
   onLinkIdentity,
   onSignOut,
   onAuthRequired,
+  oceanGateway,
 }: AuthenticatedExperienceProps) {
   const { t } = useI18n();
   const { route, navigate } = useHashRoute();
@@ -284,9 +395,8 @@ function AppExperience({
   const [loadError, setLoadError] = useState(false);
   const operationEpochRef = useRef(0);
   const previousIncomingMessageRef = useRef<boolean | null>(null);
-  const hasIncomingMessage = snapshot
-    ? snapshot.bottleAvailable || (!snapshot.waitingForNews && !snapshot.activeBottle)
-    : null;
+  const [notificationEnabled, setNotificationEnabled] = useState(false);
+  const hasIncomingMessage = snapshot ? Boolean(snapshot.activeBottle) : null;
 
   useEffect(() => {
     if (previousIncomingMessageRef.current === false && hasIncomingMessage === true) {
@@ -294,6 +404,16 @@ function AppExperience({
     }
     previousIncomingMessageRef.current = hasIncomingMessage;
   }, [hasIncomingMessage]);
+
+  useEffect(() => {
+    const timeZone = getBrowserTimeZone();
+    if (!timeZone) return;
+
+    // The server owns date boundaries and validates the IANA value. This is
+    // intentionally best effort: a privacy setting, offline browser, or an
+    // older deployment must never block onboarding or the ocean experience.
+    void oceanGateway.updateTimeZone(timeZone).catch(() => undefined);
+  }, [oceanGateway, user.id]);
 
   useEffect(() => {
     oceanGateway
@@ -309,7 +429,7 @@ function AppExperience({
         }
         setLoadError(true);
       });
-  }, [onAuthRequired, syncServerPreferences]);
+  }, [oceanGateway, onAuthRequired, syncServerPreferences]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -326,7 +446,7 @@ function AppExperience({
         .catch(() => undefined);
     }, 15_000);
     return () => window.clearInterval(timer);
-  }, [syncServerPreferences]);
+  }, [oceanGateway, syncServerPreferences]);
 
   useEffect(() => {
     const syncOtherTab = () => {
@@ -345,11 +465,31 @@ function AppExperience({
 
     window.addEventListener("storage", syncOtherTab);
     return () => window.removeEventListener("storage", syncOtherTab);
-  }, [syncServerPreferences]);
+  }, [oceanGateway, syncServerPreferences]);
 
   useEffect(() => {
     document.documentElement.dataset.reduceMotion = preferences.reduceMotion ? "true" : "false";
   }, [preferences.reduceMotion]);
+
+  useEffect(() => {
+    if (typeof snapshot?.bottleArrivedEnabled === "boolean") {
+      setNotificationEnabled(snapshot.bottleArrivedEnabled);
+    }
+  }, [snapshot?.bottleArrivedEnabled]);
+
+  const refreshPushSubscription = useCallback(async () => {
+    if (!notificationEnabled) return;
+    const subscription = await getExistingPushSubscription();
+    if (subscription) await oceanGateway.upsertPushSubscription(subscription);
+  }, [notificationEnabled, oceanGateway]);
+
+  useEffect(() => {
+    void refreshPushSubscription().catch(() => undefined);
+  }, [refreshPushSubscription]);
+
+  useEffect(() => onPushSubscriptionChange(() => {
+    void refreshPushSubscription().catch(() => undefined);
+  }), [refreshPushSubscription]);
 
   const operationEpoch = operationEpochRef.current;
   const acceptSnapshot = useCallback((nextSnapshot: OceanSnapshot) => {
@@ -365,19 +505,38 @@ function AppExperience({
     try {
       const reduceMotion =
         preferences.reduceMotion || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      // Assignment happens in the scheduled backend worker. Opening the shore
+      // must never compete for a global message or mutate its assignment.
       const [nextSnapshot] = await Promise.all([
-        oceanGateway.catchBottle(),
+        snapshot.activeBottle ? Promise.resolve(snapshot) : oceanGateway.getSnapshot(),
         wait(reduceMotion ? 0 : 520),
       ]);
       if (operationEpochRef.current !== operationEpoch) return;
       setSnapshot(nextSnapshot);
       syncServerPreferences(nextSnapshot);
-      if (readAppRoute() === "home") navigate("catch");
+      if (nextSnapshot.activeBottle && readAppRoute() === "home") navigate("catch");
     } catch {
       oceanGateway.getSnapshot().then(setSnapshot).catch(() => undefined);
     } finally {
       setCatching(false);
     }
+  };
+
+  const changeBottleArrivalNotifications = async (enabled: boolean): Promise<boolean> => {
+    if (enabled) {
+      const subscription = await requestPushSubscription();
+      await oceanGateway.upsertPushSubscription(subscription);
+    }
+    const nextPreferences = await oceanGateway.updateNotificationPreferences(enabled);
+    setNotificationEnabled(nextPreferences.bottleArrivedEnabled);
+    return nextPreferences.bottleArrivedEnabled;
+  };
+
+  const deleteAccount = async (): Promise<void> => {
+    await oceanGateway.deleteAccount();
+    await clearBrowserPushSubscription().catch(() => undefined);
+    updatePreferences(resetPreferences());
+    onAuthRequired();
   };
 
   if (loadError) {
@@ -396,7 +555,7 @@ function AppExperience({
   if (!snapshot) {
     return (
       <main className="loading-screen" aria-live="polite">
-        <img src={BEACH_IMAGE} alt="" />
+        <img src={LOGIN_BEACH_IMAGE} width="768" height="512" alt="" />
         <strong>{t("brand.name")}</strong>
         <span>{t("loading.sea")}</span>
       </main>
@@ -408,25 +567,27 @@ function AppExperience({
   // metadata must take precedence over the old device's onboarding preference.
   if (shouldShowOnboarding(snapshot.countryCode)) {
     return (
-      <Onboarding
-        initialCountryCode={snapshot.countryCode}
-        languageCode={preferences.languageCode}
-        onLanguageChange={(languageCode) => updatePreferences({
-          ...preferences,
-          languageCode,
-          pendingLanguageCode: languageCode,
-        })}
-        onComplete={async (countryCode, defaultSignature, languageCode) => {
-          const nextSnapshot = await oceanGateway.completeOnboarding(
-            countryCode,
-            recommendedSeaForCountry(countryCode),
-            defaultSignature,
+      <Suspense fallback={<DeferredScreenFallback />}>
+        <Onboarding
+          initialCountryCode={snapshot.countryCode}
+          languageCode={preferences.languageCode}
+          onLanguageChange={(languageCode) => updatePreferences({
+            ...preferences,
             languageCode,
-          );
-          setSnapshot(nextSnapshot);
-          syncServerPreferences(nextSnapshot);
-        }}
-      />
+            pendingLanguageCode: languageCode,
+          })}
+          onComplete={async (countryCode, defaultSignature, languageCode) => {
+            const nextSnapshot = await oceanGateway.completeOnboarding(
+              countryCode,
+              recommendedSeaForCountry(countryCode),
+              defaultSignature,
+              languageCode,
+            );
+            setSnapshot(nextSnapshot);
+            syncServerPreferences(nextSnapshot);
+          }}
+        />
+      </Suspense>
     );
   }
 
@@ -508,6 +669,12 @@ function AppExperience({
         }}
         onLinkIdentity={onLinkIdentity}
         onSignOut={onSignOut}
+        notificationEnabled={notificationEnabled}
+        onNotificationPreferenceChange={changeBottleArrivalNotifications}
+        canInstall={canInstall}
+        showIosInstallHelp={showIosInstallHelp}
+        onInstall={onInstall}
+        onDeleteAccount={deleteAccount}
       />
     );
   } else {
@@ -528,7 +695,9 @@ function AppExperience({
       solidHeader={route === "guide" || route === "settings" || route === "kept"}
       onHome={() => route === "home" ? window.location.reload() : navigate("home")}
     >
-      {content}
+      <Suspense fallback={<DeferredScreenFallback />}>
+        {content}
+      </Suspense>
     </AppShell>
   );
 }

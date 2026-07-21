@@ -4,15 +4,11 @@ import {
   type SupportedStorage,
   type User,
 } from "@supabase/supabase-js";
+import { AuthenticationRequiredError } from "@/features/ocean/services/errors";
+
+export { AuthenticationRequiredError } from "@/features/ocean/services/errors";
 
 const sessionPromises = new WeakMap<SupabaseClient, Promise<User>>();
-
-export class AuthenticationRequiredError extends Error {
-  constructor() {
-    super("소셜 로그인이 필요합니다.");
-    this.name = "AuthenticationRequiredError";
-  }
-}
 
 interface BrowserSupabaseClientOptions {
   detectSessionInUrl?: boolean;

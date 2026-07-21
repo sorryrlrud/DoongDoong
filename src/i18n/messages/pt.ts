@@ -1,6 +1,8 @@
 import type { Messages } from "./en";
+import { pwaMessages } from "./pwa";
 
 export const pt: Messages = {
+  ...pwaMessages.pt,
   "settings.socialTitle":"Contas conectadas","settings.socialDescription":"Veja as contas de acesso conectadas ao DOONGDOONG ou adicione outra.","settings.socialConnected":"Conectada","settings.socialConnect":"Conectar","settings.socialConnecting":"Conectando…","settings.socialNotice":"As contas conectadas são usadas apenas para entrar. Suas cartas continuam anônimas.","settings.socialError":"Não foi possível conectar essa conta. Confira-a e tente novamente.",
   "brand.name":"DOONGDOONG","common.skip":"Ir para o conteúdo principal","common.home":"Voltar à praia do DOONGDOONG","common.cancel":"Cancelar","common.continue":"Continuar","common.back":"Voltar","common.retry":"Tentar novamente","common.optional":"Opcional","common.on":"Ligado","common.off":"Desligado","common.settings":"Configurações","fatal.title":"Não foi possível abrir o mar.","fatal.load":"Não foi possível preparar o mar. Tente novamente em instantes.","fatal.reload":"Abrir novamente","loading.sea":"Trazendo o mar…",
   "auth.eyebrow":"Um encontro tranquilo e sem nomes","auth.title":"Entre para abrir o mar","auth.description":"Escolha uma conta. Seus dados de acesso nunca aparecem nas cartas nem para os destinatários.","auth.providers":"Opções de login social","auth.google":"Continuar com Google","auth.apple":"Continuar com Apple","auth.naver":"Continuar com NAVER","auth.redirecting":"Abrindo o login…","auth.notice":"Usamos sua conta apenas para login e segurança do serviço. Ela nunca aparece nas cartas.","auth.session":"Verificando seu login…","auth.error":"Não foi possível entrar. Tente novamente.",

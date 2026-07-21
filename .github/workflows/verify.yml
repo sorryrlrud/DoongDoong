@@ -1,0 +1,83 @@
+name: Verify application and Supabase contracts
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    name: Web checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: node scripts/check-migrations.mjs
+      - run: npm run check
+
+  pwa-e2e:
+    name: PWA critical-flow E2E
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Install Chromium and system dependencies
+        run: npx playwright install --with-deps chromium
+      - name: Verify the production PWA critical flow
+        run: npm run test:e2e
+      - name: Upload Playwright diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: |
+            playwright-report
+            test-results
+          if-no-files-found: ignore
+
+  supabase:
+    name: Supabase migration replay
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.109.1
+      - run: node scripts/check-migrations.mjs
+      - run: supabase start
+      - run: supabase db reset --local --no-seed
+      - run: supabase db lint --local
+      - run: supabase test db --local
+      - name: Serve and probe Edge Functions
+        run: |
+          supabase functions serve > "$RUNNER_TEMP/supabase-functions.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/supabase-functions.pid"
+          task_env="$(supabase status --output env)"
+          task_url="$(printf '%s\n' "$task_env" | sed -n 's/^API_URL="\(.*\)"$/\1/p')"
+          task_anon="$(printf '%s\n' "$task_env" | sed -n 's/^ANON_KEY=//p')"
+          test -n "$task_url"
+          test -n "$task_anon"
+          SUPABASE_LOCAL_URL="$task_url" SUPABASE_LOCAL_ANON_KEY="$task_anon" \
+            node scripts/verify-edge-functions.mjs
+      - name: Stop local Supabase
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/supabase-functions.pid" ]; then
+            kill "$(cat "$RUNNER_TEMP/supabase-functions.pid")" || true
+          fi
+          supabase stop --no-backup

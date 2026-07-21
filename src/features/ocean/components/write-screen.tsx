@@ -39,7 +39,7 @@ export function WriteScreen({
   onSnapshot,
   onBusyChange,
 }: WriteScreenProps) {
-  const { t, languageCode } = useI18n();
+  const { t } = useI18n();
   const [body, setBody] = useState("");
   const [signature, setSignature] = useState(defaultSignature);
   const [includeDate, setIncludeDate] = useState(autoIncludeDate);
@@ -109,7 +109,6 @@ export function WriteScreen({
         signature: signature.trim() || undefined,
         includeDate,
         seaId,
-        languageCode,
       });
 
       playSplash();
@@ -124,7 +123,9 @@ export function WriteScreen({
       setStage("editing");
       setError(caught instanceof OceanError && caught.code === "DAILY_LIMIT"
         ? t("write.dailyUsed")
-        : caught instanceof OceanError && caught.code === "INVALID_DRAFT"
+        : caught instanceof OceanError && caught.code === "CONTENT_REJECTED"
+          ? t("write.blockedGeneric")
+          : caught instanceof OceanError && caught.code === "INVALID_DRAFT"
           ? lengthError
           : t("write.sendError"));
     } finally {

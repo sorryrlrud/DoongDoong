@@ -1,6 +1,8 @@
 import type { Messages } from "./en";
+import { pwaMessages } from "./pwa";
 
 export const es: Messages = {
+  ...pwaMessages.es,
   "settings.socialTitle":"Cuentas conectadas","settings.socialDescription":"Consulta las cuentas de acceso conectadas a DOONGDOONG o añade otra.","settings.socialConnected":"Conectada","settings.socialConnect":"Conectar","settings.socialConnecting":"Conectando…","settings.socialNotice":"Las cuentas conectadas solo se usan para iniciar sesión. Tus cartas siguen siendo anónimas.","settings.socialError":"No pudimos conectar esa cuenta. Compruébala e inténtalo de nuevo.",
   "brand.name":"DOONGDOONG","common.skip":"Ir al contenido principal","common.home":"Volver a la orilla de DOONGDOONG","common.cancel":"Cancelar","common.continue":"Continuar","common.back":"Atrás","common.retry":"Reintentar","common.optional":"Opcional","common.on":"Activado","common.off":"Desactivado","common.settings":"Ajustes","fatal.title":"No pudimos abrir el mar.","fatal.load":"No pudimos preparar el mar. Inténtalo de nuevo en unos instantes.","fatal.reload":"Abrir de nuevo","loading.sea":"Trayendo el mar…",
   "auth.eyebrow":"Un encuentro tranquilo y sin nombres","auth.title":"Inicia sesión para abrir el mar","auth.description":"Elige una cuenta. Tus datos de acceso nunca se muestran en las cartas ni a sus destinatarios.","auth.providers":"Opciones de inicio de sesión social","auth.google":"Continuar con Google","auth.apple":"Continuar con Apple","auth.naver":"Continuar con NAVER","auth.redirecting":"Abriendo el inicio de sesión…","auth.notice":"Usamos tu cuenta solo para iniciar sesión y proteger el servicio. Nunca aparece en tus cartas.","auth.session":"Comprobando tu sesión…","auth.error":"No pudimos iniciar sesión. Inténtalo de nuevo.",

@@ -1,10 +1,11 @@
 import type { SocialAuthProvider } from "@/features/auth/types/auth";
 import { useI18n } from "@/i18n/i18n";
-import { BEACH_IMAGE } from "@/shared/brand";
+import { LOGIN_BEACH_IMAGE } from "@/shared/brand";
 
 interface LoginScreenProps {
   busyProvider: SocialAuthProvider | null;
   error: string | null;
+  sessionPending?: boolean;
   onSignIn: (provider: SocialAuthProvider) => void;
 }
 
@@ -17,12 +18,25 @@ const PROVIDERS: Array<{
   { id: "naver", label: "auth.naver" },
 ];
 
-export function LoginScreen({ busyProvider, error, onSignIn }: LoginScreenProps) {
+export function LoginScreen({
+  busyProvider,
+  error,
+  sessionPending = false,
+  onSignIn,
+}: LoginScreenProps) {
   const { t } = useI18n();
 
   return (
-    <main className="login-screen">
-      <img className="login-screen__art" src={BEACH_IMAGE} alt="" />
+    <main className="login-screen" aria-busy={sessionPending || undefined}>
+      <img
+        className="login-screen__art"
+        src={LOGIN_BEACH_IMAGE}
+        width="768"
+        height="512"
+        fetchPriority="high"
+        decoding="async"
+        alt=""
+      />
       <section className="login-screen__panel" aria-labelledby="login-title">
         <div className="login-screen__brand">{t("brand.name")}</div>
         <p className="login-screen__eyebrow">{t("auth.eyebrow")}</p>
@@ -37,7 +51,7 @@ export function LoginScreen({ busyProvider, error, onSignIn }: LoginScreenProps)
               key={provider.id}
               className={`social-login social-login--${provider.id}`}
               type="button"
-              disabled={busyProvider !== null}
+              disabled={sessionPending || busyProvider !== null}
               onClick={() => onSignIn(provider.id)}
             >
               <span className="social-login__mark" aria-hidden="true">

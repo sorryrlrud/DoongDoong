@@ -4,7 +4,11 @@ import type {
   AdminAuthInfo,
   AdminGateway,
   AdminMessageStatus,
+  AdminReportPage,
+  AdminReportReason,
+  AdminReportResolution,
   AdminResetDirection,
+  AdminUserStatus,
   AdminUsageMetric,
 } from "@/features/admin/types/admin";
 import { PageHeading } from "@/shared/page-heading";
@@ -56,6 +60,31 @@ const STATUS_LABELS: Record<Exclude<AdminMessageStatus, "all">, string> = {
   deleted: "삭제됨",
   reported: "신고됨",
 };
+
+const REPORT_REASON_LABELS: Record<AdminReportReason, string> = {
+  personal_info: "개인정보",
+  sexual: "성적 콘텐츠",
+  hate: "혐오 표현",
+  harassment: "괴롭힘",
+  self_harm: "자해·자살 위험",
+  spam: "스팸",
+  other: "기타",
+};
+
+const REPORT_RESOLUTION_LABELS: Record<AdminReportResolution, string> = {
+  dismiss_and_redrift: "신고 기각 후 재표류",
+  remove_message: "메시지 삭제",
+  remove_and_suspend_author: "메시지 삭제 및 작성자 정지",
+  remove_and_ban_author: "메시지 삭제 및 작성자 차단",
+};
+
+const USER_STATUS_LABELS: Record<AdminUserStatus, string> = {
+  active: "활성화",
+  suspended: "정지",
+  banned: "차단",
+};
+
+const REPORT_PAGE_SIZE = 50;
 
 const formatUsageValue = (value: number, unit: AdminUsageMetric["unit"]): string => {
   if (unit === "bytes") {
@@ -112,11 +141,16 @@ interface ActionFeedback {
 
 export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
   const [dashboard, setDashboard] = useState<AdminDashboard | null>(null);
+  const [reportPage, setReportPage] = useState<AdminReportPage | null>(null);
   const [authInfo, setAuthInfo] = useState<AdminAuthInfo | null>(null);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<AdminMessageStatus>("all");
   const [loading, setLoading] = useState(true);
+  const [reportsLoading, setReportsLoading] = useState(true);
+  const [reportsLoadingMore, setReportsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [reportsError, setReportsError] = useState<string | null>(null);
+  const [reportsMoreError, setReportsMoreError] = useState<string | null>(null);
   const [actionKey, setActionKey] = useState<string | null>(null);
   const [actionFeedback, setActionFeedback] = useState<ActionFeedback | null>(null);
   const [currentTime, setCurrentTime] = useState(() => Date.now());
@@ -153,6 +187,65 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
     setDashboard(result);
   }, [gateway]);
 
+  const loadReports = useCallback(async () => {
+    if (!gateway) {
+      setReportPage(null);
+      setReportsError("관리자 페이지는 Supabase 운영 환경에서만 사용할 수 있습니다.");
+      setReportsLoading(false);
+      setReportsLoadingMore(false);
+      return;
+    }
+
+    setReportsLoading(true);
+    setReportsError(null);
+    setReportsMoreError(null);
+    try {
+      setReportPage(await gateway.listReports({ status: "open", limit: REPORT_PAGE_SIZE }));
+    } catch (caught) {
+      setReportPage(null);
+      setReportsError(getErrorMessage(caught));
+    } finally {
+      setReportsLoading(false);
+    }
+  }, [gateway]);
+
+  const refreshReports = useCallback(async () => {
+    if (!gateway) throw new Error("관리자 페이지는 Supabase 운영 환경에서만 사용할 수 있습니다.");
+    setReportPage(await gateway.listReports({ status: "open", limit: REPORT_PAGE_SIZE }));
+    setReportsError(null);
+    setReportsMoreError(null);
+  }, [gateway]);
+
+  const loadMoreReports = useCallback(async () => {
+    const cursor = reportPage?.nextCursor;
+    if (!gateway || !cursor || reportsLoadingMore) return;
+
+    setReportsLoadingMore(true);
+    setReportsMoreError(null);
+    try {
+      const nextPage = await gateway.listReports({
+        status: "open",
+        limit: REPORT_PAGE_SIZE,
+        cursor,
+      });
+      setReportPage((current) => {
+        if (!current || current.nextCursor !== cursor) return current;
+        const reportIds = new Set(current.reports.map((report) => report.reportId));
+        return {
+          reports: [
+            ...current.reports,
+            ...nextPage.reports.filter((report) => !reportIds.has(report.reportId)),
+          ],
+          nextCursor: nextPage.nextCursor,
+        };
+      });
+    } catch (caught) {
+      setReportsMoreError(getErrorMessage(caught));
+    } finally {
+      setReportsLoadingMore(false);
+    }
+  }, [gateway, reportPage?.nextCursor, reportsLoadingMore]);
+
   useEffect(() => {
     let active = true;
 
@@ -166,13 +259,14 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
         }
       }
       if (active) await loadDashboard("", "all");
+      if (active) void loadReports();
     };
 
     void initialize();
     return () => {
       active = false;
     };
-  }, [gateway, loadDashboard]);
+  }, [gateway, loadDashboard, loadReports]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setCurrentTime(Date.now()), 30_000);
@@ -197,7 +291,10 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
       // Keep the current table mounted while refreshing after a row action.
       // Reusing loadDashboard here used to toggle the page-level loading state,
       // which made adjacent controls flicker or disappear during a reset.
-      await refreshDashboard(query, status);
+      await Promise.all([
+        refreshDashboard(query, status),
+        refreshReports(),
+      ]);
       setActionFeedback({ kind: "success", message: successMessage });
     } catch (caught) {
       setActionFeedback({ kind: "error", message: getErrorMessage(caught) });
@@ -224,12 +321,40 @@ export function AdminScreen({ gateway, onExit }: AdminScreenProps) {
 
   const deleteUser = (userId: string) => {
     if (!gateway || !window.confirm(
-      `사용자 ${userId}와 관련된 모든 메시지를 데이터베이스에서 완전히 삭제할까요? 이 작업은 되돌릴 수 없습니다.`,
+      `사용자 ${userId}의 계정·프로필·기기 구독·차단 관계를 삭제할까요? 유통 중인 편지의 본문과 번역은 다른 이용자의 경험을 위해 남을 수 있지만, 작성자 연결 정보·국가·서명·날짜 표시는 제거됩니다. 이 작업은 되돌릴 수 없습니다.`,
     )) return;
     void runAction(
       `delete-${userId}`,
       () => gateway.deleteUser(userId),
-      "사용자와 관련 메시지를 완전히 삭제했습니다.",
+      "계정 개인정보를 삭제하고 유통 중인 편지를 비식별화했습니다.",
+    );
+  };
+
+  const updateUserStatus = (userId: string, nextStatus: AdminUserStatus) => {
+    if (!gateway) return;
+    const actionLabel = USER_STATUS_LABELS[nextStatus];
+    const reason = window.prompt(`${actionLabel} 사유를 기록하세요. 비워 두면 사유 없이 감사 로그에 남습니다.`, "");
+    if (reason === null || !window.confirm(
+      `사용자 ${userId}를 ${actionLabel} 상태로 변경할까요?`,
+    )) return;
+    void runAction(
+      `status-${nextStatus}-${userId}`,
+      () => gateway.updateUserStatus(userId, nextStatus, reason),
+      `사용자 상태를 ${actionLabel}했습니다.`,
+    );
+  };
+
+  const resolveReport = (reportId: string, resolution: AdminReportResolution) => {
+    if (!gateway) return;
+    const actionLabel = REPORT_RESOLUTION_LABELS[resolution];
+    const note = window.prompt(`${actionLabel} 처리 메모를 기록하세요. 비워 둘 수 있습니다.`, "");
+    if (note === null || !window.confirm(
+      `이 신고를 “${actionLabel}”로 처리할까요? 이 작업은 신고 기록과 감사 로그에 남습니다.`,
+    )) return;
+    void runAction(
+      `report-${resolution}-${reportId}`,
+      () => gateway.resolveReport(reportId, resolution, note),
+      `신고를 ${actionLabel}로 처리했습니다.`,
     );
   };
 
@@ -319,6 +444,116 @@ set role = 'admin', status = 'active', deleted_at = null;`}</pre>
             <article><span>도달함</span><strong>{dashboard.stats.deliveredMessages.toLocaleString()}</strong></article>
             <article className="admin-stat--alert"><span>신고됨</span><strong>{dashboard.stats.reportedMessages.toLocaleString()}</strong></article>
             <article><span>삭제 사용자</span><strong>{dashboard.stats.deletedUsers.toLocaleString()}</strong></article>
+          </section>
+
+          <section className="admin-section" aria-labelledby="admin-reports-title">
+            <div className="admin-section__heading">
+              <div>
+                <h2 id="admin-reports-title">신고 검토</h2>
+                <span>열린 신고를 검토하고 편지·작성자 조치를 한 번에 기록합니다.</span>
+              </div>
+              <span>{reportPage?.reports.length ?? 0}건 표시</span>
+            </div>
+            {reportsLoading ? <p className="admin-state" role="status">신고 목록을 불러오는 중…</p> : null}
+            {reportsError ? (
+              <section className="admin-state admin-state--error" role="alert">
+                <strong>신고 목록을 불러오지 못했습니다.</strong>
+                <p>{reportsError}</p>
+                <button className="button button--small" type="button" onClick={() => void loadReports()}>
+                  다시 시도
+                </button>
+              </section>
+            ) : null}
+            {reportPage && !reportsLoading ? (
+              <div className="admin-message-list">
+                {reportPage.reports.map((report) => (
+                  <article className="admin-message admin-message--alert" key={report.reportId}>
+                    <header>
+                      <span className="admin-badge admin-badge--reported">신고 검토</span>
+                      <time dateTime={report.createdAt}>{formatDate(report.createdAt)}</time>
+                      <strong>{REPORT_REASON_LABELS[report.reason]}</strong>
+                    </header>
+                    <p>{report.message.body}</p>
+                    {report.message.signature ? <blockquote>서명: {report.message.signature}</blockquote> : null}
+                    <dl>
+                      <div><dt>신고 ID</dt><dd><code>{report.reportId}</code></dd></div>
+                      <div><dt>메시지 ID</dt><dd><code>{report.messageId}</code></dd></div>
+                      <div><dt>신고자 UID</dt><dd><code>{report.reporterId ?? "-"}</code></dd></div>
+                      <div><dt>작성자 UID</dt><dd><code>{report.authorId ?? "-"}</code></dd></div>
+                      <div><dt>메시지 상태</dt><dd>{STATUS_LABELS[report.message.status]}</dd></div>
+                      <div>
+                        <dt>누적 사유</dt>
+                        <dd>{Object.entries(report.reasonCounts)
+                          .map(([reason, count]) => `${REPORT_REASON_LABELS[reason as AdminReportReason] ?? reason} ${count}`)
+                          .join(" · ") || "-"}
+                        </dd>
+                      </div>
+                    </dl>
+                    <div className="admin-message__actions">
+                      <button
+                        className="button button--ghost button--small"
+                        type="button"
+                        disabled={actionKey !== null || reportsLoadingMore}
+                        onClick={() => resolveReport(report.reportId, "dismiss_and_redrift")}
+                      >
+                        기각·재표류
+                      </button>
+                      <button
+                        className="button button--danger button--small"
+                        type="button"
+                        disabled={actionKey !== null || reportsLoadingMore}
+                        onClick={() => resolveReport(report.reportId, "remove_message")}
+                      >
+                        메시지 삭제
+                      </button>
+                      <button
+                        className="button button--danger button--small"
+                        type="button"
+                        disabled={actionKey !== null || reportsLoadingMore || report.authorId === null}
+                        onClick={() => resolveReport(report.reportId, "remove_and_suspend_author")}
+                      >
+                        삭제·정지
+                      </button>
+                      <button
+                        className="button button--danger button--small"
+                        type="button"
+                        disabled={actionKey !== null || reportsLoadingMore || report.authorId === null}
+                        onClick={() => resolveReport(report.reportId, "remove_and_ban_author")}
+                      >
+                        삭제·차단
+                      </button>
+                    </div>
+                  </article>
+                ))}
+                {reportPage.reports.length === 0 ? <p className="admin-empty">열린 신고가 없습니다.</p> : null}
+                {reportsMoreError ? (
+                  <div className="admin-state admin-state--error" role="alert">
+                    <strong>다음 신고 목록을 불러오지 못했습니다.</strong>
+                    <p>{reportsMoreError}</p>
+                    <button
+                      className="button button--small"
+                      type="button"
+                      disabled={actionKey !== null || reportsLoadingMore}
+                      onClick={() => void loadMoreReports()}
+                    >
+                      더 보기 다시 시도
+                    </button>
+                  </div>
+                ) : null}
+                {reportPage.nextCursor && !reportsMoreError ? (
+                  <div className="admin-message__actions">
+                    <button
+                      className="button button--ghost button--small"
+                      type="button"
+                      disabled={actionKey !== null || reportsLoadingMore}
+                      onClick={() => void loadMoreReports()}
+                    >
+                      {reportsLoadingMore ? "신고를 더 불러오는 중…" : "신고 더 보기"}
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
           </section>
 
           <section className="admin-usage" aria-labelledby="admin-usage-title">
@@ -415,7 +650,7 @@ set role = 'admin', status = 'active', deleted_at = null;`}</pre>
                           <button
                             className="button button--ghost button--tiny"
                             type="button"
-                            disabled={user.status === "deleted"}
+                            disabled={user.status === "deleted" || actionKey !== null}
                             onClick={(event) => {
                               event.currentTarget.blur();
                               resetUser(user.id, "send");
@@ -426,7 +661,7 @@ set role = 'admin', status = 'active', deleted_at = null;`}</pre>
                           <button
                             className="button button--ghost button--tiny"
                             type="button"
-                            disabled={user.status === "deleted"}
+                            disabled={user.status === "deleted" || actionKey !== null}
                             onClick={(event) => {
                               event.currentTarget.blur();
                               resetUser(user.id, "receive");
@@ -434,11 +669,64 @@ set role = 'admin', status = 'active', deleted_at = null;`}</pre>
                           >
                             수신 초기화
                           </button>
+                          {user.status !== "active" ? (
+                            <button
+                              className="button button--ghost button--tiny"
+                              type="button"
+                              disabled={
+                                actionKey !== null
+                                || user.role === "admin"
+                                || user.id === authInfo?.userId
+                              }
+                              onClick={(event) => {
+                                event.currentTarget.blur();
+                                updateUserStatus(user.id, "active");
+                              }}
+                            >
+                              활성화
+                            </button>
+                          ) : null}
+                          {user.status !== "suspended" ? (
+                            <button
+                              className="button button--ghost button--tiny"
+                              type="button"
+                              disabled={
+                                actionKey !== null
+                                || user.role === "admin"
+                                || user.id === authInfo?.userId
+                              }
+                              onClick={(event) => {
+                                event.currentTarget.blur();
+                                updateUserStatus(user.id, "suspended");
+                              }}
+                            >
+                              정지
+                            </button>
+                          ) : null}
+                          {user.status !== "banned" ? (
+                            <button
+                              className="button button--danger button--tiny"
+                              type="button"
+                              disabled={
+                                actionKey !== null
+                                || user.role === "admin"
+                                || user.id === authInfo?.userId
+                              }
+                              onClick={(event) => {
+                                event.currentTarget.blur();
+                                updateUserStatus(user.id, "banned");
+                              }}
+                            >
+                              차단
+                            </button>
+                          ) : null}
                           <button
                             className="button button--danger button--tiny"
                             type="button"
                             disabled={
-                              user.role === "admin"
+                              actionKey !== null
+                              || user.status === "deleted"
+                              || user.role === "admin"
                               || user.id === authInfo?.userId
                             }
                             onClick={(event) => {

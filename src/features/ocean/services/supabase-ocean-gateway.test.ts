@@ -135,6 +135,24 @@ describe("SupabaseOceanGateway", () => {
     });
   });
 
+  it("persists the authenticated browser time zone through its dedicated RPC", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: snapshot, error: null });
+    const client = {
+      auth: {
+        getSession: vi.fn().mockResolvedValue({ data: { session: { user: { id: "user-id" } } }, error: null }),
+      },
+      rpc,
+    };
+    const gateway = new SupabaseOceanGateway(client as never);
+
+    await expect(gateway.updateTimeZone("Asia/Seoul")).resolves.toMatchObject({
+      seaId: "pacific",
+    });
+    expect(rpc).toHaveBeenCalledWith("ocean_update_time_zone", {
+      p_time_zone: "Asia/Seoul",
+    });
+  });
+
   it("requests translation as soon as a bottle reaches its recipient", async () => {
     const delivered = {
       ...snapshot,
@@ -159,6 +177,90 @@ describe("SupabaseOceanGateway", () => {
     expect(invoke).toHaveBeenCalledWith("translate-message", {
       body: { messageId: "00000000-0000-4000-8000-000000000001" },
     });
+  });
+
+  it("submits a bottle through the server-authoritative Edge Function", async () => {
+    const invoke = vi.fn().mockResolvedValue({ data: { snapshot }, error: null });
+    const client = {
+      auth: {
+        getSession: vi.fn().mockResolvedValue({ data: { session: { user: { id: "user-id" } } }, error: null }),
+      },
+      functions: { invoke },
+    };
+    const gateway = new SupabaseOceanGateway(client as never);
+
+    await gateway.sendBottle({
+      body: "  A server-checked letter.  ",
+      seaId: "pacific",
+      signature: "  A quiet writer  ",
+      includeDate: true,
+    });
+
+    expect(invoke).toHaveBeenCalledWith("send-message", {
+      body: {
+        body: "A server-checked letter.",
+        seaId: "pacific",
+        signature: "A quiet writer",
+        includeDate: true,
+      },
+    });
+  });
+
+  it("uses the private report and Push RPC contracts", async () => {
+    const rpc = vi
+      .fn()
+      .mockResolvedValueOnce({ data: snapshot, error: null })
+      .mockResolvedValueOnce({ data: { enabled: true, subscriptionActive: true }, error: null })
+      .mockResolvedValueOnce({ data: { bottleArrivedEnabled: true }, error: null });
+    const client = {
+      auth: {
+        getSession: vi.fn().mockResolvedValue({ data: { session: { user: { id: "user-id" } } }, error: null }),
+      },
+      rpc,
+    };
+    const gateway = new SupabaseOceanGateway(client as never);
+
+    await gateway.reportBottle("message-id", "spam", true);
+    await gateway.upsertPushSubscription({
+      endpoint: "https://push.example/subscription",
+      p256dh: "public-key",
+      auth: "auth-secret",
+      userAgent: "Browser",
+    });
+    await gateway.updateNotificationPreferences(true);
+
+    expect(rpc).toHaveBeenNthCalledWith(1, "ocean_report_message", {
+      p_message_id: "message-id",
+      p_reason: "spam",
+      p_block_author: true,
+    });
+    expect(rpc).toHaveBeenNthCalledWith(2, "ocean_upsert_push_subscription", {
+      p_endpoint: "https://push.example/subscription",
+      p_p256dh: "public-key",
+      p_auth: "auth-secret",
+      p_user_agent: "Browser",
+    });
+    expect(rpc).toHaveBeenNthCalledWith(3, "ocean_update_notification_preferences", {
+      p_bottle_arrived_enabled: true,
+    });
+  });
+
+  it("deletes the account through its Edge Function and clears the local session", async () => {
+    const signOut = vi.fn().mockResolvedValue({ error: null });
+    const invoke = vi.fn().mockResolvedValue({ data: null, error: null });
+    const client = {
+      auth: {
+        getSession: vi.fn().mockResolvedValue({ data: { session: { user: { id: "user-id" } } }, error: null }),
+        signOut,
+      },
+      functions: { invoke },
+    };
+    const gateway = new SupabaseOceanGateway(client as never);
+
+    await gateway.deleteAccount();
+
+    expect(invoke).toHaveBeenCalledWith("delete-account", { body: { confirmation: "DELETE" } });
+    expect(signOut).toHaveBeenCalledWith({ scope: "local" });
   });
 
   it("clears a deleted account and requires social login again", async () => {

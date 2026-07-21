@@ -4,6 +4,7 @@ import { withSupabase } from "npm:@supabase/server@^1";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
@@ -21,6 +22,102 @@ const recordUsage = async (
     p_metric: metric,
     p_quantity: quantity,
   });
+};
+
+interface TranslationJob {
+  job_id: string;
+  message_id: string;
+  body: string;
+  source_language: string;
+  target_language: string;
+}
+
+const completeJob = async (
+  admin: Parameters<Parameters<typeof withSupabase>[1]>[1]["supabaseAdmin"],
+  job: TranslationJob,
+  workerId: string,
+  outcome: "succeeded" | "retry" | "dead_letter",
+  translatedBody: string | null,
+  detail: string | null,
+) => admin.rpc("ocean_complete_translation_job", {
+  p_job_id: job.job_id,
+  p_worker_id: workerId,
+  p_outcome: outcome,
+  p_translated_body: translatedBody,
+  p_error: detail,
+});
+
+const processQueuedTranslations = async (
+  admin: Parameters<Parameters<typeof withSupabase>[1]>[1]["supabaseAdmin"],
+) => {
+  const workerId = crypto.randomUUID();
+  const { data, error } = await admin.rpc("ocean_claim_translation_jobs", {
+    p_worker_id: workerId,
+    p_batch_size: 10,
+  });
+  if (error) throw new Error("TRANSLATION_JOB_CLAIM_FAILED");
+  const jobs = (data ?? []) as TranslationJob[];
+  if (jobs.length === 0) return { processed: 0, configured: true };
+
+  const azureKey = Deno.env.get("AZURE_TRANSLATOR_KEY");
+  const azureRegion = Deno.env.get("AZURE_TRANSLATOR_REGION");
+  const azureEndpoint = (Deno.env.get("AZURE_TRANSLATOR_ENDPOINT")
+    ?? "https://api.cognitive.microsofttranslator.com").replace(/\/$/, "");
+  if (!azureKey) {
+    await Promise.all(jobs.map((job) => completeJob(
+      admin,
+      job,
+      workerId,
+      "retry",
+      null,
+      "TRANSLATION_NOT_CONFIGURED",
+    )));
+    return { processed: jobs.length, configured: false };
+  }
+
+  for (const job of jobs) {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "Ocp-Apim-Subscription-Key": azureKey,
+    };
+    if (azureRegion) headers["Ocp-Apim-Subscription-Region"] = azureRegion;
+    try {
+      const translationResponse = await fetch(
+        `${azureEndpoint}/translate?api-version=3.0&textType=plain&from=${encodeURIComponent(job.source_language)}&to=${encodeURIComponent(job.target_language)}`,
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify([{ text: job.body }]),
+          signal: AbortSignal.timeout(8_000),
+        },
+      );
+      if (!translationResponse.ok) {
+        await completeJob(admin, job, workerId, "retry", null, `AZURE_${translationResponse.status}`);
+        continue;
+      }
+      const translationPayload = await translationResponse.json() as Array<{
+        translations?: Array<{ text?: string }>;
+      }>;
+      const translatedBody = translationPayload[0]?.translations?.[0]?.text?.trim();
+      if (!translatedBody) {
+        await completeJob(admin, job, workerId, "retry", null, "AZURE_EMPTY_RESPONSE");
+        continue;
+      }
+      const { error: completionError } = await completeJob(
+        admin,
+        job,
+        workerId,
+        "succeeded",
+        translatedBody,
+        null,
+      );
+      if (completionError) continue;
+      await recordUsage(admin, "translated_characters", Array.from(job.body).length).catch(() => undefined);
+    } catch {
+      await completeJob(admin, job, workerId, "retry", null, "AZURE_UNAVAILABLE");
+    }
+  }
+  return { processed: jobs.length, configured: true };
 };
 
 const translateMessage = withSupabase({ auth: "user" }, async (request, context) => {
@@ -69,43 +166,15 @@ const translateMessage = withSupabase({ auth: "user" }, async (request, context)
     .maybeSingle();
   if (cached) return json({ translated: true, cached: true });
 
-  const azureKey = Deno.env.get("AZURE_TRANSLATOR_KEY");
-  const azureRegion = Deno.env.get("AZURE_TRANSLATOR_REGION");
-  const azureEndpoint = (Deno.env.get("AZURE_TRANSLATOR_ENDPOINT")
-    ?? "https://api.cognitive.microsofttranslator.com").replace(/\/$/, "");
-  if (!azureKey) return json({ error: "TRANSLATION_NOT_CONFIGURED" }, 503);
+  const { error: enqueueError } = await admin.rpc("ocean_enqueue_translation", {
+    p_message_id: messageId,
+    p_target_language: targetLanguage,
+  });
+  if (enqueueError) return json({ error: "TRANSLATION_QUEUE_FAILED" }, 500);
 
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    "Ocp-Apim-Subscription-Key": azureKey,
-  };
-  if (azureRegion) headers["Ocp-Apim-Subscription-Region"] = azureRegion;
-
-  const translationResponse = await fetch(
-    `${azureEndpoint}/translate?api-version=3.0&textType=plain&from=${encodeURIComponent(sourceLanguage)}&to=${encodeURIComponent(targetLanguage)}`,
-    { method: "POST", headers, body: JSON.stringify([{ text: message.body }]) },
-  );
-  if (!translationResponse.ok) return json({ error: "TRANSLATION_FAILED" }, 502);
-
-  const translationPayload = await translationResponse.json() as Array<{
-    translations?: Array<{ text?: string }>;
-  }>;
-  const translatedBody = translationPayload[0]?.translations?.[0]?.text?.trim();
-  if (!translatedBody) return json({ error: "TRANSLATION_FAILED" }, 502);
-
-  await recordUsage(admin, "translated_characters", Array.from(message.body).length)
-    .catch(() => undefined);
-
-  const { error: cacheError } = await admin.from("message_translations").upsert({
-    message_id: messageId,
-    source_language: sourceLanguage,
-    target_language: targetLanguage,
-    translated_body: translatedBody,
-    provider: "azure",
-  }, { onConflict: "message_id,target_language", ignoreDuplicates: true });
-
-  if (cacheError) return json({ error: "CACHE_WRITE_FAILED" }, 500);
-  return json({ translated: true, cached: false });
+  const result = await processQueuedTranslations(admin).catch(() => null);
+  if (!result?.configured) return json({ error: "TRANSLATION_NOT_CONFIGURED" }, 503);
+  return json({ translated: true, cached: false, queued: result.processed > 0 });
 });
 
 export default {

@@ -1,0 +1,55 @@
+project_id = "doongdoong"
+
+[api]
+enabled = true
+port = 54421
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54422
+shadow_port = 54420
+major_version = 17
+
+[db.migrations]
+enabled = true
+
+[db.seed]
+enabled = false
+
+[studio]
+enabled = true
+port = 54423
+api_url = "http://127.0.0.1:54421"
+
+[local_smtp]
+enabled = true
+port = 54424
+
+[auth]
+enabled = true
+site_url = "http://localhost:5173"
+additional_redirect_urls = ["http://localhost:5173", "http://127.0.0.1:5173", "https://sorryrlrud.github.io/DoongDoong/"]
+enable_signup = true
+enable_anonymous_sign_ins = false
+enable_manual_linking = true
+
+[auth.email]
+enable_signup = true
+enable_confirmations = false
+
+[edge_runtime]
+enabled = true
+policy = "per_worker"
+deno_version = 2
+inspector_port = 8183
+
+[functions.dispatch-web-push]
+# The platform JWT gate must not reject the dedicated scheduler secret before
+# the function can validate it in constant time.
+verify_jwt = false
+
+[analytics]
+enabled = true
+port = 54427

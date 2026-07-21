@@ -44,6 +44,11 @@ export interface OceanSnapshot {
   nextCatchAt: number | null;
   bottleAvailable: boolean;
   waitingForNews: boolean;
+  /**
+   * Optional during the compatibility rollout. New backends include the
+   * persisted preference so a fresh device can render the correct toggle.
+   */
+  bottleArrivedEnabled?: boolean;
   activeBottle: ActiveBottle | null;
   keptBottles: KeptBottle[];
 }
@@ -53,10 +58,32 @@ export interface BottleDraft {
   seaId: SeaId;
   includeDate: boolean;
   signature?: string;
-  languageCode: LanguageCode;
 }
 
-export type BottleResolution = "redrift" | "keep" | "discard" | "report";
+export type BottleResolution = "redrift" | "keep" | "discard";
+
+export const REPORT_REASONS = [
+  "personal_info",
+  "sexual",
+  "hate",
+  "harassment",
+  "self_harm",
+  "spam",
+  "other",
+] as const;
+
+export type ReportReason = (typeof REPORT_REASONS)[number];
+
+export interface PushSubscriptionInput {
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  userAgent?: string;
+}
+
+export interface NotificationPreferences {
+  bottleArrivedEnabled: boolean;
+}
 
 export interface OceanGateway {
   getSnapshot(): Promise<OceanSnapshot>;
@@ -64,6 +91,7 @@ export interface OceanGateway {
   catchBottle(): Promise<OceanSnapshot>;
   openBottle(id: string): Promise<OceanSnapshot>;
   resolveBottle(id: string, resolution: BottleResolution): Promise<OceanSnapshot>;
+  reportBottle(id: string, reason: ReportReason, blockAuthor: boolean): Promise<OceanSnapshot>;
   completeOnboarding(
     countryCode: string,
     seaId: SeaId,
@@ -74,6 +102,11 @@ export interface OceanGateway {
   updateDefaultSignature(defaultSignature: string): Promise<OceanSnapshot>;
   updateAppPreferences(reduceMotion: boolean, autoIncludeDate: boolean): Promise<OceanSnapshot>;
   updateSea(seaId: SeaId): Promise<OceanSnapshot>;
+  updateTimeZone(timeZone: string): Promise<OceanSnapshot>;
+  upsertPushSubscription(subscription: PushSubscriptionInput): Promise<{ enabled: boolean; subscriptionActive: boolean }>;
+  deletePushSubscription(endpoint: string): Promise<{ subscriptionActive: boolean }>;
+  updateNotificationPreferences(enabled: boolean): Promise<NotificationPreferences>;
+  deleteAccount(): Promise<void>;
 }
 
 export type OceanErrorCode =
@@ -83,7 +116,18 @@ export type OceanErrorCode =
   | "BOTTLE_GONE"
   | "ACTIVE_BOTTLE"
   | "ADMIN_ACCOUNT"
-  | "INVALID_DRAFT";
+  | "INVALID_DRAFT"
+  | "AUTH_REQUIRED"
+  | "ACCOUNT_INACTIVE"
+  | "CONTENT_REJECTED"
+  | "RATE_LIMITED"
+  | "MODERATION_UNAVAILABLE"
+  | "CONFIRMATION_REQUIRED"
+  | "ACCOUNT_DELETE_IN_PROGRESS"
+  | "ACCOUNT_DELETE_FAILED"
+  | "MESSAGE_NOT_OWNED"
+  | "INVALID_REPORT_REASON"
+  | "REPORT_ALREADY_EXISTS";
 
 export class OceanError extends Error {
   constructor(

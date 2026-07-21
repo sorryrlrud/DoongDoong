@@ -1,4 +1,5 @@
 import type { Messages } from "./en";
+import { pwaMessages } from "./pwa";
 import { zhHans } from "./zh-hans";
 
 const replacements: ReadonlyArray<readonly [string, string]> = [
@@ -22,6 +23,9 @@ const replacements: ReadonlyArray<readonly [string, string]> = [
 const traditionalize = (value: string): string =>
   replacements.reduce((result, [from, to]) => result.replaceAll(from, to), value);
 
-export const zhHant = Object.fromEntries(
-  Object.entries(zhHans).map(([key, value]) => [key, traditionalize(value)]),
-) as Messages;
+export const zhHant = {
+  ...Object.fromEntries(
+    Object.entries(zhHans).map(([key, value]) => [key, traditionalize(value)]),
+  ) as Messages,
+  ...pwaMessages["zh-Hant"],
+} as Messages;

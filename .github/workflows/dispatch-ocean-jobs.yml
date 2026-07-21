@@ -1,0 +1,32 @@
+name: Dispatch Ocean lifecycle and Push work
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ocean-dispatch
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      SCHEDULED_JOB_SECRET: ${{ secrets.SCHEDULED_JOB_SECRET }}
+    steps:
+      - name: Verify scheduler configuration
+        run: |
+          test -n "$SUPABASE_URL"
+          test -n "$SCHEDULED_JOB_SECRET"
+      - name: Advance lifecycle, assign bottles, and dispatch Push
+        run: |
+          curl --fail-with-body --silent --show-error \
+            --request POST "$SUPABASE_URL/functions/v1/dispatch-web-push" \
+            --header "x-scheduled-job-secret: $SCHEDULED_JOB_SECRET" \
+            --header "content-type: application/json" \
+            --data '{"batchSize":100}'

@@ -5,7 +5,11 @@ import type {
   AdminDashboardFilters,
   AdminAuthInfo,
   AdminGateway,
+  AdminReportListOptions,
+  AdminReportPage,
+  AdminReportResolution,
   AdminResetDirection,
+  AdminUserStatus,
 } from "@/features/admin/types/admin";
 
 export class SupabaseAdminGateway implements AdminGateway {
@@ -35,6 +39,45 @@ export class SupabaseAdminGateway implements AdminGateway {
       ...(dashboardResponse.data as Omit<AdminDashboard, "usage">),
       usage: usageResponse.data,
     } as AdminDashboard;
+  }
+
+  async listReports({
+    status = "open",
+    limit = 50,
+    cursor = null,
+  }: AdminReportListOptions = {}): Promise<AdminReportPage> {
+    await ensureSupabaseSession(this.client);
+    const { data, error } = await this.client.rpc("admin_list_reports", {
+      p_status: status,
+      p_limit: limit,
+      p_cursor: cursor,
+    });
+    if (error) throw error;
+    return data as AdminReportPage;
+  }
+
+  async resolveReport(
+    reportId: string,
+    resolution: AdminReportResolution,
+    note?: string,
+  ): Promise<void> {
+    await ensureSupabaseSession(this.client);
+    const { error } = await this.client.rpc("admin_resolve_report", {
+      p_report_id: reportId,
+      p_resolution: resolution,
+      p_note: note?.trim() || null,
+    });
+    if (error) throw error;
+  }
+
+  async updateUserStatus(userId: string, status: AdminUserStatus, reason?: string): Promise<void> {
+    await ensureSupabaseSession(this.client);
+    const { error } = await this.client.rpc("admin_update_user_status", {
+      p_user_id: userId,
+      p_status: status,
+      p_reason: reason?.trim() || null,
+    });
+    if (error) throw error;
   }
 
   async resetUserLimits(userId: string, direction: AdminResetDirection): Promise<void> {

@@ -1,6 +1,8 @@
 import type { Messages } from "./en";
+import { pwaMessages } from "./pwa";
 
 export const hi: Messages = {
+  ...pwaMessages.hi,
   "settings.socialTitle":"जुड़े हुए खाते","settings.socialDescription":"DOONGDOONG से जुड़े लॉगिन खाते देखें या कोई दूसरा खाता जोड़ें।","settings.socialConnected":"जुड़ा हुआ","settings.socialConnect":"जोड़ें","settings.socialConnecting":"जोड़ा जा रहा है…","settings.socialNotice":"जुड़े खाते केवल लॉगिन के लिए उपयोग होते हैं। आपके पत्र गुमनाम रहते हैं।","settings.socialError":"यह खाता नहीं जोड़ा जा सका। खाता जाँचकर फिर कोशिश करें।",
   "brand.name":"DOONGDOONG","common.skip":"मुख्य सामग्री पर जाएँ","common.home":"DOONGDOONG तट पर लौटें","common.cancel":"रद्द करें","common.continue":"आगे बढ़ें","common.back":"वापस","common.retry":"फिर कोशिश करें","common.optional":"वैकल्पिक","common.on":"चालू","common.off":"बंद","common.settings":"सेटिंग्स","fatal.title":"समुद्र नहीं खुल सका।","fatal.load":"समुद्र तैयार नहीं हो सका। थोड़ी देर बाद फिर कोशिश करें।","fatal.reload":"फिर खोलें","loading.sea":"समुद्र को बुलाया जा रहा है…",
   "auth.eyebrow":"बिना नाम की एक शांत मुलाकात","auth.title":"समुद्र खोलने के लिए साइन इन करें","auth.description":"एक खाता चुनें। आपकी लॉगिन जानकारी पत्रों या पाने वालों को कभी नहीं दिखाई जाती।","auth.providers":"सोशल लॉगिन विकल्प","auth.google":"Google से जारी रखें","auth.apple":"Apple से जारी रखें","auth.naver":"NAVER से जारी रखें","auth.redirecting":"लॉगिन खोला जा रहा है…","auth.notice":"खाता केवल लॉगिन और सेवा सुरक्षा के लिए उपयोग होता है। यह पत्रों में कभी नहीं दिखता।","auth.session":"लॉगिन की जाँच हो रही है…","auth.error":"साइन इन नहीं हो सका। फिर कोशिश करें।",

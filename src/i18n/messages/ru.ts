@@ -1,6 +1,8 @@
 import type { Messages } from "./en";
+import { pwaMessages } from "./pwa";
 
 export const ru: Messages = {
+  ...pwaMessages.ru,
   "settings.socialTitle":"Связанные аккаунты","settings.socialDescription":"Просмотрите аккаунты для входа, связанные с DOONGDOONG, или добавьте другой.","settings.socialConnected":"Связан","settings.socialConnect":"Связать","settings.socialConnecting":"Связываем…","settings.socialNotice":"Связанные аккаунты используются только для входа. Письма остаются анонимными.","settings.socialError":"Не удалось связать аккаунт. Проверьте его и повторите попытку.",
   "brand.name":"DOONGDOONG","common.skip":"Перейти к основному содержанию","common.home":"Вернуться на берег DOONGDOONG","common.cancel":"Отмена","common.continue":"Продолжить","common.back":"Назад","common.retry":"Повторить","common.optional":"Необязательно","common.on":"Вкл.","common.off":"Выкл.","common.settings":"Настройки","fatal.title":"Не удалось открыть море.","fatal.load":"Не удалось подготовить море. Повторите попытку чуть позже.","fatal.reload":"Открыть снова","loading.sea":"Море приближается…",
   "auth.eyebrow":"Тихая встреча без имён","auth.title":"Войдите, чтобы открыть море","auth.description":"Выберите аккаунт. Данные входа никогда не показываются в письмах или получателям.","auth.providers":"Способы входа через соцсети","auth.google":"Продолжить с Google","auth.apple":"Продолжить с Apple","auth.naver":"Продолжить с NAVER","auth.redirecting":"Открываем вход…","auth.notice":"Аккаунт используется только для входа и безопасности сервиса. Он никогда не отображается в письмах.","auth.session":"Проверяем вход…","auth.error":"Не удалось войти. Повторите попытку.",

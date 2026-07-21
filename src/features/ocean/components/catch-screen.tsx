@@ -2,11 +2,17 @@ import { useEffect, useState, type MouseEvent } from "react";
 import type { AppRoute } from "@/app/use-hash-route";
 import { oceanGateway } from "@/features/ocean/services/runtime";
 import { countryName } from "@/features/ocean/countries";
-import type { BottleResolution, OceanSnapshot } from "@/features/ocean/types/ocean";
+import {
+  REPORT_REASONS,
+  type BottleResolution,
+  type OceanSnapshot,
+  type ReportReason,
+} from "@/features/ocean/types/ocean";
 import { BEACH_IMAGE, BOTTLE_WITH_LETTER_IMAGE } from "@/shared/brand";
 import { PageHeading } from "@/shared/page-heading";
 import { useI18n } from "@/i18n/i18n";
 import { languageDisplayName } from "@/i18n/languages";
+import type { MessageKey } from "@/i18n/messages/en";
 
 interface CatchScreenProps {
   snapshot: OceanSnapshot;
@@ -20,6 +26,16 @@ type CatchResolution = Exclude<BottleResolution, "discard">;
 
 const wait = (duration: number) => new Promise((resolve) => window.setTimeout(resolve, duration));
 
+const REPORT_REASON_KEYS: Record<ReportReason, MessageKey> = {
+  personal_info: "catch.reportReason.personal_info",
+  sexual: "catch.reportReason.sexual",
+  hate: "catch.reportReason.hate",
+  harassment: "catch.reportReason.harassment",
+  self_harm: "catch.reportReason.self_harm",
+  spam: "catch.reportReason.spam",
+  other: "catch.reportReason.other",
+};
+
 export function CatchScreen({
   snapshot,
   reduceMotion,
@@ -32,6 +48,8 @@ export function CatchScreen({
   const [opening, setOpening] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<"report" | null>(null);
+  const [reportReason, setReportReason] = useState<ReportReason>("other");
+  const [blockAuthor, setBlockAuthor] = useState(false);
 
   useEffect(() => {
     if (!snapshot.activeBottle) onNavigate("home");
@@ -75,6 +93,25 @@ export function CatchScreen({
       if (window.location.hash.replace(/^#\/?/, "") === "catch") onNavigate("home");
     } catch {
       setError(t("catch.resolveError"));
+    } finally {
+      setBusy(false);
+      onBusyChange(false);
+    }
+  };
+
+  const reportBottle = async () => {
+    const active = snapshot.activeBottle;
+    if (!active || busy) return;
+    setBusy(true);
+    onBusyChange(true);
+    setError(null);
+    try {
+      const nextSnapshot = await oceanGateway.reportBottle(active.id, reportReason, blockAuthor);
+      onSnapshot(nextSnapshot);
+      setConfirming(null);
+      if (window.location.hash.replace(/^#\/?/, "") === "catch") onNavigate("home");
+    } catch {
+      setError(t("catch.reportError"));
     } finally {
       setBusy(false);
       onBusyChange(false);
@@ -168,7 +205,16 @@ export function CatchScreen({
 
       <div className="scene-report">
         {confirming !== "report" ? (
-          <button className="link-button" type="button" onClick={() => setConfirming("report")} disabled={busy || Boolean(confirming)}>
+          <button
+            className="link-button"
+            type="button"
+            onClick={() => {
+              setReportReason("other");
+              setBlockAuthor(false);
+              setConfirming("report");
+            }}
+            disabled={busy || Boolean(confirming)}
+          >
             {t("catch.report")}
           </button>
         ) : null}
@@ -177,9 +223,30 @@ export function CatchScreen({
       {confirming === "report" ? (
         <div className="scene-confirm" role="group" aria-label={t("catch.reportConfirm")} aria-live="polite">
           <p>{t("catch.reportWarning")}</p>
+          <label className="report-field">
+            <span>{t("catch.reportReason")}</span>
+            <select
+              value={reportReason}
+              disabled={busy}
+              onChange={(event) => setReportReason(event.target.value as ReportReason)}
+            >
+              {REPORT_REASONS.map((reason) => (
+                <option key={reason} value={reason}>{t(REPORT_REASON_KEYS[reason])}</option>
+              ))}
+            </select>
+          </label>
+          <label className="report-block-author">
+            <input
+              type="checkbox"
+              checked={blockAuthor}
+              disabled={busy}
+              onChange={(event) => setBlockAuthor(event.target.checked)}
+            />
+            <span>{t("catch.blockAuthor")}</span>
+          </label>
           <div>
             <button type="button" onClick={() => setConfirming(null)}>{t("common.cancel")}</button>
-            <button type="button" onClick={() => void resolveBottle("report")} disabled={busy}>{t("catch.report")}</button>
+            <button type="button" onClick={() => void reportBottle()} disabled={busy}>{t("catch.report")}</button>
           </div>
         </div>
       ) : null}

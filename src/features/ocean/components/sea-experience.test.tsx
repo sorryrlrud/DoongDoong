@@ -67,6 +67,12 @@ describe("sea experience", () => {
         onAppPreferencesChange={async () => undefined}
         onLinkIdentity={async () => undefined}
         onSignOut={async () => undefined}
+        notificationEnabled={false}
+        onNotificationPreferenceChange={async (enabled) => enabled}
+        canInstall={false}
+        showIosInstallHelp={false}
+        onInstall={async () => undefined}
+        onDeleteAccount={async () => undefined}
       />,
     );
 

@@ -1,5 +1,8 @@
 export const HERO_IMAGE = `${import.meta.env.BASE_URL}assets/doongdoong-ocean-hero.jpg`;
 export const BEACH_IMAGE = `${import.meta.env.BASE_URL}assets/doongdoong-beach-empty.jpg`;
+// The login image is the LCP candidate on mobile. Keep a purpose-sized source
+// for that route instead of downloading the 1536px scene for a 412px viewport.
+export const LOGIN_BEACH_IMAGE = `${import.meta.env.BASE_URL}assets/doongdoong-beach-empty-lcp.jpg`;
 export const WRITING_SET_IMAGE = `${import.meta.env.BASE_URL}assets/doongdoong-writing-set.png`;
 export const BOTTLE_WITH_LETTER_IMAGE = `${import.meta.env.BASE_URL}assets/doongdoong-bottle-letter.png`;
 export const ARRIVED_BOTTLE_IMAGE = `${import.meta.env.BASE_URL}assets/doongdoong-bottle-arrived.png`;

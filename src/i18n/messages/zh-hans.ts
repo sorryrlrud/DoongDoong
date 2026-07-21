@@ -1,6 +1,8 @@
 import type { Messages } from "./en";
+import { pwaMessages } from "./pwa";
 
 export const zhHans: Messages = {
+  ...pwaMessages["zh-Hans"],
   "settings.socialTitle":"社交登录关联","settings.socialDescription":"查看已关联到 DOONGDOONG 的登录账号，或添加其他账号。","settings.socialConnected":"已关联","settings.socialConnect":"关联","settings.socialConnecting":"正在关联…","settings.socialNotice":"关联账号仅用于登录，不会显示在信件中。","settings.socialError":"无法关联该账号。请检查账号后重试。",
   "brand.name":"DOONGDOONG","common.skip":"跳到主要内容","common.home":"返回DOONGDOONG海滩","common.cancel":"取消","common.continue":"继续","common.back":"返回","common.retry":"重试","common.optional":"选填","common.on":"开","common.off":"关","common.settings":"设置",
   "fatal.title":"无法打开大海。","fatal.load":"无法准备海洋数据，请稍后重试。","fatal.reload":"重新打开","loading.sea":"正在唤来大海…",

@@ -8,6 +8,9 @@ describe("i18n", () => {
       expect(translate(language.code, "onboarding.selectTitle").trim()).not.toBe("");
       expect(translate(language.code, "guide.safety4").trim()).not.toBe("");
       expect(translate(language.code, "home.keptCount", { count: 3 })).toContain("3");
+      expect(translate(language.code, "settings.notificationsTitle").trim()).not.toBe("");
+      expect(translate(language.code, "settings.deleteAccount").trim()).not.toBe("");
+      expect(translate(language.code, "catch.reportReason.spam").trim()).not.toBe("");
     }
   });
 
