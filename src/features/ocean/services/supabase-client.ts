@@ -1,4 +1,9 @@
-import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
+import {
+  createClient,
+  type SupabaseClient,
+  type SupportedStorage,
+  type User,
+} from "@supabase/supabase-js";
 
 const sessionPromises = new WeakMap<SupabaseClient, Promise<User>>();
 
@@ -12,6 +17,7 @@ export class AuthenticationRequiredError extends Error {
 interface BrowserSupabaseClientOptions {
   detectSessionInUrl?: boolean;
   storageKey?: string;
+  storage?: SupportedStorage;
 }
 
 export const createBrowserSupabaseClient = (
@@ -25,6 +31,7 @@ export const createBrowserSupabaseClient = (
       autoRefreshToken: true,
       detectSessionInUrl: options.detectSessionInUrl ?? true,
       ...(options.storageKey ? { storageKey: options.storageKey } : {}),
+      ...(options.storage ? { storage: options.storage } : {}),
     },
   });
 

@@ -93,7 +93,7 @@ Supabase Authentication의 Custom OAuth Providers에서 다음 값으로 OAuth2 
 
 Custom provider 생성 화면에 표시된 Callback URL을 Naver 애플리케이션의 Callback URL로 등록합니다.
 
-세 provider의 실제 로그인을 모두 확인한 뒤 Anonymous Sign-Ins와 Email은 비활성화합니다. GitHub provider는 관리자 전용으로 활성화하되 일반 바다 RPC는 계속 `google`, `apple`, `custom:naver` identity만 허용합니다. 일반 로그인과 GitHub 관리자 로그인은 클라이언트에서 별도 세션 저장소를 사용합니다.
+세 provider의 실제 로그인을 모두 확인한 뒤 Anonymous Sign-Ins와 Email은 비활성화합니다. GitHub provider는 관리자 전용으로 활성화하되 일반 바다 RPC는 계속 `google`, `apple`, `custom:naver` identity만 허용합니다. 일반 로그인은 브라우저 공용 저장소를 사용하고 GitHub 관리자 로그인은 OAuth를 시작한 탭의 `sessionStorage`를 사용합니다.
 
 ### 기존 사용자 전체 초기화
 

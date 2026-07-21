@@ -1,9 +1,9 @@
-const CACHE_NAME = "doongdoong-v14";
+const CACHE_NAME = "doongdoong-v15";
 const APP_SHELL = ["./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 const cacheAppShell = async () => {
   const cache = await caches.open(CACHE_NAME);
-  const indexResponse = await fetch("./");
+  const indexResponse = await fetch("./", { cache: "no-store" });
   const indexHtml = await indexResponse.clone().text();
   await cache.put("./", indexResponse.clone());
   await cache.put("./index.html", indexResponse);
@@ -15,7 +15,7 @@ const cacheAppShell = async () => {
   await Promise.all(
     [...APP_SHELL, ...compiledAssets].map(async (path) => {
       const request = new Request(new URL(path, self.registration.scope));
-      const response = await fetch(request);
+      const response = await fetch(request, { cache: "no-store" });
       if (response.ok) await cache.put(request, response);
     }),
   );
@@ -40,7 +40,8 @@ self.addEventListener("fetch", (event) => {
 
   if (event.request.mode === "navigate") {
     event.respondWith(
-      fetch(event.request).catch(async () => (await caches.match("./index.html")) ?? caches.match("./")),
+      fetch(event.request, { cache: "no-store" })
+        .catch(async () => (await caches.match("./index.html")) ?? caches.match("./")),
     );
     return;
   }

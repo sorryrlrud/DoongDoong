@@ -14,6 +14,15 @@ import {
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 const isAdminAuthRoute = typeof window !== "undefined" && readAppRoute() === "admin";
+const adminSessionStorage = (() => {
+  if (typeof window === "undefined") return undefined;
+  try {
+    return window.sessionStorage;
+  } catch {
+    // Browsers that block sessionStorage still retain the separate admin key.
+    return undefined;
+  }
+})();
 
 const supabaseClient = supabaseUrl && supabasePublishableKey
   ? createBrowserSupabaseClient(supabaseUrl, supabasePublishableKey, {
@@ -25,6 +34,7 @@ const adminSupabaseClient = supabaseUrl && supabasePublishableKey
   ? createBrowserSupabaseClient(supabaseUrl, supabasePublishableKey, {
     detectSessionInUrl: isAdminAuthRoute,
     storageKey: `doongdoong-admin-${new URL(supabaseUrl).hostname}`,
+    storage: adminSessionStorage,
   })
   : null;
 

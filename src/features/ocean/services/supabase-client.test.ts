@@ -14,10 +14,17 @@ import {
 describe("ensureSupabaseSession", () => {
   beforeEach(() => createClient.mockClear());
 
-  it("can isolate an auth client with its own storage and callback handling", () => {
+  it("can isolate an auth client with tab-scoped storage and callback handling", () => {
+    const tabStorage = {
+      getItem: vi.fn(),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+    };
+
     createBrowserSupabaseClient("https://project.supabase.co", "publishable-key", {
       detectSessionInUrl: false,
       storageKey: "admin-session",
+      storage: tabStorage,
     });
 
     expect(createClient).toHaveBeenCalledWith(
@@ -29,6 +36,7 @@ describe("ensureSupabaseSession", () => {
           autoRefreshToken: true,
           detectSessionInUrl: false,
           storageKey: "admin-session",
+          storage: tabStorage,
         },
       },
     );
