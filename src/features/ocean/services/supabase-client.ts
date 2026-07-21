@@ -9,9 +9,23 @@ export class AuthenticationRequiredError extends Error {
   }
 }
 
-export const createBrowserSupabaseClient = (url: string, publishableKey: string): SupabaseClient =>
+interface BrowserSupabaseClientOptions {
+  detectSessionInUrl?: boolean;
+  storageKey?: string;
+}
+
+export const createBrowserSupabaseClient = (
+  url: string,
+  publishableKey: string,
+  options: BrowserSupabaseClientOptions = {},
+): SupabaseClient =>
   createClient(url, publishableKey, {
-    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: options.detectSessionInUrl ?? true,
+      ...(options.storageKey ? { storageKey: options.storageKey } : {}),
+    },
   });
 
 export const ensureSupabaseSession = async (client: SupabaseClient): Promise<User> => {

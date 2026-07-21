@@ -93,7 +93,7 @@ Supabase Authentication의 Custom OAuth Providers에서 다음 값으로 OAuth2 
 
 Custom provider 생성 화면에 표시된 Callback URL을 Naver 애플리케이션의 Callback URL로 등록합니다.
 
-세 provider의 실제 로그인을 모두 확인한 뒤 Anonymous Sign-Ins, Email, GitHub provider를 비활성화합니다. DB 함수도 `google`, `apple`, `custom:naver` identity 외에는 `SOCIAL_AUTH_REQUIRED`로 거부합니다.
+세 provider의 실제 로그인을 모두 확인한 뒤 Anonymous Sign-Ins와 Email은 비활성화합니다. GitHub provider는 관리자 전용으로 활성화하되 일반 바다 RPC는 계속 `google`, `apple`, `custom:naver` identity만 허용합니다. 일반 로그인과 GitHub 관리자 로그인은 클라이언트에서 별도 세션 저장소를 사용합니다.
 
 ### 기존 사용자 전체 초기화
 
@@ -115,9 +115,9 @@ Custom provider 생성 화면에 표시된 Callback URL을 Naver 애플리케이
 
 ## 관리자 조회
 
-`admin_dashboard`와 관리자 작업 RPC는 호출자의 `public.users.role`, `status`, 지원되는 소셜 identity를 서버에서 확인한 뒤에만 통계 조회나 변경을 수행합니다. 사용자 삭제, 발신·수신 초기화, 메시지 즉시 도달 가능 처리를 일반 사용자가 직접 호출할 수 없습니다.
+`admin_dashboard`와 관리자 작업 RPC는 호출자의 `public.users.role`, `status`, GitHub identity를 서버에서 확인한 뒤에만 통계 조회나 변경을 수행합니다. 사용자 삭제, 발신·수신 초기화, 메시지 즉시 도달 가능 처리를 일반 사용자가 직접 호출할 수 없습니다.
 
-전체 초기화 후 Google, Apple, Naver 중 하나로 로그인하고 관리자 페이지 `#/admin`에 표시되는 UID로 SQL Editor에서 다음 쿼리를 실행합니다.
+GitHub provider를 활성화하고 `#/admin`으로 최초 로그인한 뒤 관리자 페이지에 표시되는 GitHub Auth 사용자의 UID로 SQL Editor에서 다음 쿼리를 실행합니다.
 
 ```sql
 update public.users

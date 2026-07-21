@@ -3,7 +3,7 @@ import { AppShell } from "@/app/app-shell";
 import { AdminScreen } from "@/features/admin/components/admin-screen";
 import { LoginScreen } from "@/features/auth/components/login-screen";
 import { AdminLoginScreen } from "@/features/auth/components/admin-login-screen";
-import type { AuthUser, SocialAuthProvider } from "@/features/auth/types/auth";
+import type { AuthGateway, AuthUser, SocialAuthProvider } from "@/features/auth/types/auth";
 import {
   loadPreferences,
   savePreferences,
@@ -18,7 +18,12 @@ import { KeptScreen } from "@/features/ocean/components/kept-screen";
 import { Onboarding } from "@/features/ocean/components/onboarding";
 import { SettingsScreen } from "@/features/ocean/components/settings-screen";
 import { WriteScreen } from "@/features/ocean/components/write-screen";
-import { adminGateway, authGateway, oceanGateway } from "@/features/ocean/services/runtime";
+import {
+  adminAuthGateway,
+  adminGateway,
+  authGateway,
+  oceanGateway,
+} from "@/features/ocean/services/runtime";
 import { AuthenticationRequiredError } from "@/features/ocean/services/supabase-client";
 import type { OceanSnapshot } from "@/features/ocean/types/ocean";
 import { BEACH_IMAGE } from "@/shared/brand";
@@ -87,6 +92,9 @@ const hasOAuthError = (): boolean => {
   return query.has("error") || hash.has("error");
 };
 
+const hasPublicSocialIdentity = (user: AuthUser | null | undefined): boolean =>
+  user?.providers.some((provider) => ["google", "apple", "custom:naver"].includes(provider)) ?? false;
+
 function AuthenticatedApp({
   preferences,
   updatePreferences,
@@ -94,29 +102,35 @@ function AuthenticatedApp({
 }: AuthenticatedAppProps) {
   const { t } = useI18n();
   const { route, navigate } = useHashRoute();
-  const [user, setUser] = useState<AuthUser | null | undefined>(undefined);
+  const isAdminRoute = route === "admin";
+  const activeAuthGateway = isAdminRoute ? adminAuthGateway : authGateway;
+  const [authState, setAuthState] = useState<{
+    gateway: AuthGateway | null;
+    user: AuthUser | null | undefined;
+  }>(() => ({ gateway: activeAuthGateway, user: undefined }));
+  const user = authState.gateway === activeAuthGateway ? authState.user : undefined;
   const [busyProvider, setBusyProvider] = useState<SocialAuthProvider | null>(null);
   const [adminBusy, setAdminBusy] = useState(false);
   const [authFailed, setAuthFailed] = useState(hasOAuthError);
 
   useEffect(() => {
-    if (!authGateway) return;
+    if (!activeAuthGateway) return;
     let active = true;
-    const unsubscribe = authGateway.onAuthStateChange((user) => {
+    const unsubscribe = activeAuthGateway.onAuthStateChange((user) => {
       if (!active) return;
-      setUser(user);
+      setAuthState({ gateway: activeAuthGateway, user });
       setBusyProvider(null);
       setAdminBusy(false);
     });
 
-    authGateway
+    activeAuthGateway
       .getCurrentUser()
       .then((user) => {
-        if (active) setUser(user);
+        if (active) setAuthState({ gateway: activeAuthGateway, user });
       })
       .catch(() => {
         if (active) {
-          setUser(null);
+          setAuthState({ gateway: activeAuthGateway, user: null });
           setAuthFailed(true);
         }
       });
@@ -125,13 +139,23 @@ function AuthenticatedApp({
       active = false;
       unsubscribe();
     };
-  }, []);
+  }, [activeAuthGateway]);
+
+  // `?admin=1` is reserved for the OAuth callback because Supabase uses the
+  // fragment for its response. Once that response has been consumed, keep the
+  // browser on the single public administrator address: `#/admin`.
+  useEffect(() => {
+    if (isAdminRoute && user !== undefined) navigate("admin");
+  }, [isAdminRoute, navigate, user]);
 
   const signIn = async (provider: SocialAuthProvider) => {
     if (!authGateway || busyProvider) return;
     setBusyProvider(provider);
     setAuthFailed(false);
     try {
+      // A GitHub session created by the previous shared-session implementation
+      // cannot enter the public app. Clear it before starting a regular login.
+      if (user && !hasPublicSocialIdentity(user)) await authGateway.signOut();
       await authGateway.signIn(provider);
     } catch {
       setBusyProvider(null);
@@ -154,20 +178,27 @@ function AuthenticatedApp({
     await authGateway.linkIdentity(provider);
   };
   const signInAdmin = async () => {
-    if (!authGateway || adminBusy) return;
+    if (!adminAuthGateway || adminBusy) return;
     setAdminBusy(true);
     setAuthFailed(false);
     try {
-      if (user) await authGateway.signOut();
-      await authGateway.signInAdmin();
+      if (user) await adminAuthGateway.signOut();
+      await adminAuthGateway.signInAdmin();
     } catch {
       setAdminBusy(false);
       setAuthFailed(true);
     }
   };
-  const handleAuthRequired = useCallback(() => setUser(null), []);
+  const signOutAdmin = async () => {
+    if (!adminAuthGateway) return;
+    await adminAuthGateway.signOut();
+    navigate("home");
+  };
+  const handleAuthRequired = useCallback(() => {
+    setAuthState((current) => ({ ...current, user: null }));
+  }, []);
 
-  if (!authGateway) {
+  if (!activeAuthGateway) {
     return (
       <main className="fatal-state">
         <strong>{t("brand.name")}</strong>
@@ -187,7 +218,6 @@ function AuthenticatedApp({
     );
   }
 
-  const isAdminRoute = route === "admin";
   const hasGitHubIdentity = user?.providers.includes("github") ?? false;
 
   if (isAdminRoute && !hasGitHubIdentity) {
@@ -202,10 +232,10 @@ function AuthenticatedApp({
   }
 
   if (isAdminRoute && user) {
-    return <AdminScreen gateway={adminGateway} onExit={() => void signOut()} />;
+    return <AdminScreen gateway={adminGateway} onExit={() => void signOutAdmin()} />;
   }
 
-  if (user === null) {
+  if (user === null || !hasPublicSocialIdentity(user)) {
     return (
       <LoginScreen
         busyProvider={busyProvider}
@@ -371,10 +401,6 @@ function AppExperience({
         <span>{t("loading.sea")}</span>
       </main>
     );
-  }
-
-  if (route === "admin") {
-    return <AdminScreen gateway={adminGateway} onExit={() => navigate("home")} />;
   }
 
   // A permanently deleted account may still have an unexpired browser token.

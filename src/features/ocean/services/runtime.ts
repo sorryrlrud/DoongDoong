@@ -1,5 +1,6 @@
 import { SupabaseAdminGateway } from "@/features/admin/services/supabase-admin-gateway";
 import type { AdminGateway } from "@/features/admin/types/admin";
+import { readAppRoute } from "@/app/use-hash-route";
 import { SupabaseAuthGateway } from "@/features/auth/services/supabase-auth-gateway";
 import type { AuthGateway } from "@/features/auth/types/auth";
 import { createBrowserSupabaseClient } from "@/features/ocean/services/supabase-client";
@@ -12,9 +13,19 @@ import {
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const isAdminAuthRoute = typeof window !== "undefined" && readAppRoute() === "admin";
 
 const supabaseClient = supabaseUrl && supabasePublishableKey
-  ? createBrowserSupabaseClient(supabaseUrl, supabasePublishableKey)
+  ? createBrowserSupabaseClient(supabaseUrl, supabasePublishableKey, {
+    detectSessionInUrl: !isAdminAuthRoute,
+  })
+  : null;
+
+const adminSupabaseClient = supabaseUrl && supabasePublishableKey
+  ? createBrowserSupabaseClient(supabaseUrl, supabasePublishableKey, {
+    detectSessionInUrl: isAdminAuthRoute,
+    storageKey: `doongdoong-admin-${new URL(supabaseUrl).hostname}`,
+  })
   : null;
 
 const missingConfiguration = async (): Promise<never> => {
@@ -38,11 +49,14 @@ export const oceanGateway: OceanGateway = supabaseClient
   ? new SupabaseOceanGateway(supabaseClient)
   : unavailableOceanGateway;
 
-export const adminGateway: AdminGateway | null = supabaseClient
-  ? new SupabaseAdminGateway(supabaseClient)
+export const adminGateway: AdminGateway | null = adminSupabaseClient
+  ? new SupabaseAdminGateway(adminSupabaseClient)
   : null;
 export const authGateway: AuthGateway | null = supabaseClient
   ? new SupabaseAuthGateway(supabaseClient)
+  : null;
+export const adminAuthGateway: AuthGateway | null = adminSupabaseClient
+  ? new SupabaseAuthGateway(adminSupabaseClient)
   : null;
 export const safetyProvider = new ConservativeLocalSafetyProvider();
 export const translationProvider = new DisabledTranslationProvider();

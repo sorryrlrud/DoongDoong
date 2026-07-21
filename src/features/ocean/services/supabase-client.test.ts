@@ -1,7 +1,39 @@
-import { describe, expect, it, vi } from "vitest";
-import { ensureSupabaseSession } from "@/features/ocean/services/supabase-client";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const { createClient } = vi.hoisted(() => ({
+  createClient: vi.fn(() => ({ auth: {} })),
+}));
+
+vi.mock("@supabase/supabase-js", () => ({ createClient }));
+
+import {
+  createBrowserSupabaseClient,
+  ensureSupabaseSession,
+} from "@/features/ocean/services/supabase-client";
 
 describe("ensureSupabaseSession", () => {
+  beforeEach(() => createClient.mockClear());
+
+  it("can isolate an auth client with its own storage and callback handling", () => {
+    createBrowserSupabaseClient("https://project.supabase.co", "publishable-key", {
+      detectSessionInUrl: false,
+      storageKey: "admin-session",
+    });
+
+    expect(createClient).toHaveBeenCalledWith(
+      "https://project.supabase.co",
+      "publishable-key",
+      {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: false,
+          storageKey: "admin-session",
+        },
+      },
+    );
+  });
+
   it("returns an existing social session", async () => {
     const user = { id: "social-user" };
     const client = {

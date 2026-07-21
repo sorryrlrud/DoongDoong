@@ -56,7 +56,9 @@ src/
 
 ## 관리자 페이지
 
-운영 환경에서 `#/admin`으로 접속하면 사용자·메시지 통계, UID·국가·수신 가능 쿨타임 조회와 메시지 상태를 확인할 수 있습니다. 사용자와 관련 메시지 완전 삭제, 개별 메시지 완전 삭제, 발신·수신 제한 초기화, 표류 메시지 즉시 도달 가능 처리를 지원합니다. 관리자 함수는 Google·Apple·Naver 중 하나의 identity가 연결되고 `public.users.role = 'admin'`, `status = 'active'`인 계정만 실행할 수 있습니다. 권한이 없는 계정은 일반 소셜 로그인 후 표시되는 UID만 관리자 역할로 승격합니다.
+운영 환경에서 단일 관리자 주소인 `#/admin`으로 접속하면 GitHub 전용 관리자 로그인을 거쳐 사용자·메시지 통계, UID·국가·수신 가능 쿨타임 조회와 메시지 상태를 확인할 수 있습니다. 사용자와 관련 메시지 완전 삭제, 개별 메시지 완전 삭제, 발신·수신 제한 초기화, 표류 메시지 즉시 도달 가능 처리를 지원합니다. 관리자 함수는 GitHub identity가 연결되고 `public.users.role = 'admin'`, `status = 'active'`인 계정만 실행할 수 있습니다. 최초 GitHub 로그인 후 관리자 화면에 표시되는 UID만 관리자 역할로 승격합니다.
+
+일반 로그인과 관리자 로그인은 서로 다른 브라우저 세션 저장소를 사용합니다. 따라서 같은 브라우저의 일반 탭에서 Google·Apple·Naver 계정으로 로그인한 상태를 유지하면서 다른 탭에서 별도 GitHub 관리자 계정으로 로그인할 수 있습니다.
 
 관리자 페이지는 Supabase 무료 티어의 Database·월간 활성 사용자·Storage·앱에서 추적한 번역 Edge Function 호출과 Azure Translator F0의 월간 번역 문자 사용량을 함께 표시합니다. Provider 관리 키를 브라우저에 노출하지 않고 관리자 전용 RPC에서 사용량과 무료 한도 대비 잔여량을 계산합니다. 월간 수치는 UTC 기준으로 매월 1일 초기화되며, 배포 전 Edge Function 실패·캐시 적중 호출은 소급 집계할 수 없어 실제 Provider 청구 화면과 소폭 차이가 날 수 있습니다.
 
@@ -66,7 +68,7 @@ src/
 
 ## 소셜 로그인 운영 설정
 
-클라이언트는 `google`, `apple`, `custom:naver` 세 provider만 사용합니다. Provider credential과 Apple signing key는 저장소나 브라우저 환경변수에 넣지 않고 Supabase Authentication 설정에만 저장합니다. Naver의 중첩된 프로필 응답은 `naver-userinfo` Edge Function이 표준 userinfo 형태로 변환합니다.
+일반 클라이언트는 `google`, `apple`, `custom:naver` 세 provider만 사용하고 관리자 클라이언트는 GitHub만 사용합니다. Provider credential과 Apple signing key는 저장소나 브라우저 환경변수에 넣지 않고 Supabase Authentication 설정에만 저장합니다. Naver의 중첩된 프로필 응답은 `naver-userinfo` Edge Function이 표준 userinfo 형태로 변환합니다.
 
 정확한 provider 등록값, Callback URL, Edge Function 배포 순서와 전체 사용자 초기화 절차는 [운영 데이터베이스 설계](docs/production-backend.md#소셜-로그인-설정)에 정리되어 있습니다.
 
