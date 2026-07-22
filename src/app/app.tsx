@@ -241,12 +241,17 @@ function AuthenticatedApp({
     const conflict = authGateway.consumeIdentityLinkConflict();
     if (conflict) {
       const timer = window.setTimeout(() => {
+        // An OAuth error is returned in the URL fragment, so the hash router
+        // initially reads it as `home`. The gateway canonicalizes the address
+        // with history.replaceState(), which does not emit `hashchange`; keep
+        // the router state in sync so the merge confirmation is actually shown.
+        navigate("settings");
         setIdentityLinkConflict(conflict);
         setAuthFailed(false);
       }, 0);
       return () => window.clearTimeout(timer);
     }
-  }, [authGateway, isAdminRoute, user]);
+  }, [authGateway, isAdminRoute, navigate, user]);
 
   // `?admin=1` is reserved for the OAuth callback because Supabase uses the
   // fragment for its response. Once that response has been consumed, keep the

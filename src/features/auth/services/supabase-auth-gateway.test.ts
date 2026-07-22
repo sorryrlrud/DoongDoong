@@ -4,6 +4,28 @@ import { SupabaseAuthGateway } from "@/features/auth/services/supabase-auth-gate
 describe("SupabaseAuthGateway", () => {
   afterEach(() => vi.unstubAllGlobals());
 
+  const oauthCallbackWindow = (href: string, provider: "google" | "apple" | "naver" = "naver") => {
+    const stored = new Map<string, string>([["doongdoong-pending-identity-link", provider]]);
+    const location = {
+      href,
+      origin: new URL(href).origin,
+      assign: vi.fn(),
+    };
+    const replaceState = vi.fn((_state: unknown, _title: string, nextUrl: string | URL | null) => {
+      if (nextUrl) location.href = String(nextUrl);
+    });
+    vi.stubGlobal("window", {
+      location,
+      history: { state: null, replaceState },
+      sessionStorage: {
+        getItem: (key: string) => stored.get(key) ?? null,
+        setItem: (key: string, value: string) => stored.set(key, value),
+        removeItem: (key: string) => stored.delete(key),
+      },
+    });
+    return { location, replaceState, stored };
+  };
+
   it("validates the current user with the Auth server", async () => {
     const user = { id: "social-user", identities: [{ provider: "google" }], app_metadata: {} };
     const getSession = vi.fn().mockResolvedValue({
@@ -114,6 +136,28 @@ describe("SupabaseAuthGateway", () => {
       },
     });
     expect(assign).toHaveBeenCalledWith(`https://auth.example/link/${provider}`);
+  });
+
+  it("consumes an identity collision returned in the OAuth fragment", () => {
+    const browser = oauthCallbackWindow(
+      "https://sorryrlrud.github.io/DoongDoong/#error=server_error&error_code=identity_already_exists&error_description=linked",
+    );
+    const gateway = new SupabaseAuthGateway({} as never);
+
+    expect(gateway.consumeIdentityLinkConflict()).toBe("naver");
+    expect(browser.stored.has("doongdoong-pending-identity-link")).toBe(false);
+    expect(browser.location.href).toBe("https://sorryrlrud.github.io/DoongDoong/#/settings");
+    expect(browser.replaceState).toHaveBeenCalledOnce();
+  });
+
+  it("consumes an identity collision returned in the OAuth query", () => {
+    const browser = oauthCallbackWindow(
+      "https://sorryrlrud.github.io/DoongDoong/?error=server_error&error_code=identity_already_exists&error_description=linked#/settings",
+    );
+    const gateway = new SupabaseAuthGateway({} as never);
+
+    expect(gateway.consumeIdentityLinkConflict()).toBe("naver");
+    expect(browser.location.href).toBe("https://sorryrlrud.github.io/DoongDoong/#/settings");
   });
 
   it("signs out only the current browser session", async () => {
