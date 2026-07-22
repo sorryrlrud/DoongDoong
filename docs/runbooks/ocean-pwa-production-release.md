@@ -14,8 +14,7 @@ an existing production database.
 - The `production` GitHub Environment has secrets: `SUPABASE_ACCESS_TOKEN`,
   `SUPABASE_PROJECT_REF`, `SUPABASE_DB_PASSWORD`, `VITE_SUPABASE_URL`,
   `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_VAPID_PUBLIC_KEY`, and the private
-  scheduler-only `SCHEDULED_JOB_SECRET`. It also has `VITE_PUBLIC_APP_URL` and
-  `VITE_BASE_PATH` environment variables.
+  scheduler-only `SCHEDULED_JOB_SECRET`.
 - Supabase Edge secrets exist: `MODERATION_ENDPOINT`, `MODERATION_API_KEY`,
   `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`,
   `SCHEDULED_JOB_SECRET`, and optionally `ALLOWED_WEB_ORIGINS`.

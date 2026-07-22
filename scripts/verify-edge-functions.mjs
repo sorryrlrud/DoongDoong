@@ -51,7 +51,7 @@ const corsProbe = await fetch(`${baseUrl}/functions/v1/send-message`, {
 assert.equal(corsProbe.status, 200, "send-message must answer CORS preflight");
 assert.ok(
   ["*", "http://localhost:5173"].includes(corsProbe.headers.get("access-control-allow-origin")),
-  "the gateway must allow the configured development origin during CORS preflight",
+  "the gateway must allow the configured local origin during CORS preflight",
 );
 
 const translationCorsProbe = await fetch(`${baseUrl}/functions/v1/translate-message`, {

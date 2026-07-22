@@ -18,13 +18,9 @@ jobs:
     environment: production
     runs-on: ubuntu-latest
     env:
-      VITE_DEPLOYMENT_ENV: production
-      VITE_PUBLIC_APP_URL: ${{ vars.VITE_PUBLIC_APP_URL || 'https://sorryrlrud.github.io/DoongDoong/' }}
-      VITE_BASE_PATH: ${{ vars.VITE_BASE_PATH || '/DoongDoong/' }}
       VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
       VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
       VITE_VAPID_PUBLIC_KEY: ${{ secrets.VITE_VAPID_PUBLIC_KEY }}
-      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -44,8 +40,7 @@ jobs:
           test -n "$VITE_SUPABASE_URL"
           test -n "$VITE_SUPABASE_PUBLISHABLE_KEY"
           base_url="${VITE_SUPABASE_URL%/}"
-          web_origin="$(node --input-type=module -e \
-            'console.log(new URL(process.env.VITE_PUBLIC_APP_URL).origin)')"
+          web_origin="https://sorryrlrud.github.io"
 
           edge_status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
             --request OPTIONS "$base_url/functions/v1/send-message" \
@@ -92,7 +87,7 @@ jobs:
         run: npm run test
 
       - name: Build
-        run: npm run build:prod
+        run: npm run build
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5

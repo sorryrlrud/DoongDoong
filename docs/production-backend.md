@@ -55,9 +55,7 @@ supabase functions deploy translate-message
 환경변수가 없으면 앱은 설정 오류 화면을 표시합니다. `service_role` 키와 DB 비밀번호는 브라우저, `.env`, GitHub Pages 빌드에 절대 넣지 않습니다. 클라이언트에는 publishable key만 사용합니다.
 
 GitHub Pages 운영 빌드에는 `production` GitHub Environment의 Actions secrets에 아래
-값을 등록합니다. 개발 환경은 별도 `development` Environment와 별도 Supabase
-프로젝트를 사용하며 전체 설정은 [dev/prod 분리 배포 설계](deployment-environments.md)를
-따릅니다.
+값을 등록합니다. 이 서비스는 동일한 운영 Supabase 프로젝트만 사용합니다.
 
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_PUBLISHABLE_KEY`

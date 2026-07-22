@@ -1,52 +1,54 @@
-name: Deploy Supabase development
+name: Retire Supabase development project
 
 on:
   workflow_dispatch:
     inputs:
       confirm:
-        description: "Type DEPLOY_DEVELOPMENT to update the isolated development project"
+        description: "Type DELETE_DOONGDOONG_DEV to permanently delete the retired project"
         required: true
         type: string
 
 permissions:
   contents: read
 
-concurrency:
-  group: supabase-development
-  cancel-in-progress: false
-
 jobs:
-  deploy:
-    if: inputs.confirm == 'DEPLOY_DEVELOPMENT'
+  delete-project:
+    if: inputs.confirm == 'DELETE_DOONGDOONG_DEV'
     environment: development
     runs-on: ubuntu-latest
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
-      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-      - uses: supabase/setup-cli@v1
-        with:
-          version: 2.109.1
-      - run: node scripts/check-migrations.mjs
-      - name: Verify development deployment credentials
+      - name: Verify the exact retired project
         run: |
+          set -euo pipefail
+          expected_ref="xqzcqfdgahvtfrhcpxco"
+          expected_name="DoongDoong Dev"
           test -n "$SUPABASE_ACCESS_TOKEN"
-          test -n "$SUPABASE_PROJECT_REF"
-          test -n "$SUPABASE_DB_PASSWORD"
-      - run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
-      - name: Apply development database migrations
-        run: supabase db push --include-all
-      - name: Deploy authenticated development Edge Functions
-        run: >-
-          supabase functions deploy
-          send-message delete-account translate-message dispatch-web-push
-          --project-ref "$SUPABASE_PROJECT_REF" --use-api
-      - name: Deploy Naver userinfo adapter
-        run: >-
-          supabase functions deploy naver-userinfo
-          --project-ref "$SUPABASE_PROJECT_REF" --use-api --no-verify-jwt
+          test "$SUPABASE_PROJECT_REF" = "$expected_ref"
+          test "$VITE_SUPABASE_URL" = "https://${expected_ref}.supabase.co"
+
+          curl --fail-with-body --silent --show-error \
+            "https://api.supabase.com/v1/projects/${expected_ref}" \
+            --header "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
+            --output "$RUNNER_TEMP/project.json"
+          jq --exit-status \
+            --arg ref "$expected_ref" \
+            --arg name "$expected_name" \
+            '.id == $ref and .name == $name' \
+            "$RUNNER_TEMP/project.json" > /dev/null
+
+      - name: Permanently delete the retired development project
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error \
+            --request DELETE \
+            "https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_REF}" \
+            --header "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
+            --output "$RUNNER_TEMP/deleted-project.json"
+          jq --exit-status \
+            --arg ref "$SUPABASE_PROJECT_REF" \
+            '.ref == $ref or .id == $ref' \
+            "$RUNNER_TEMP/deleted-project.json" > /dev/null

@@ -6,8 +6,6 @@ coverage/
 .env
 .env.*
 !.env.example
-!.env.development.example
-!.env.production.example
 node_modules/.tmp/
 supabase/.branches/
 supabase/.temp/

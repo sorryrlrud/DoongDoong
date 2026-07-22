@@ -30,7 +30,7 @@ port = 54424
 [auth]
 enabled = true
 site_url = "http://localhost:5173"
-additional_redirect_urls = ["http://localhost:5173", "http://127.0.0.1:5173", "https://sorryrlrud.github.io/DoongDoong-dev/", "https://sorryrlrud.github.io/DoongDoong/"]
+additional_redirect_urls = ["http://localhost:5173", "http://127.0.0.1:5173", "https://sorryrlrud.github.io/DoongDoong/"]
 enable_signup = true
 enable_anonymous_sign_ins = false
 enable_manual_linking = true

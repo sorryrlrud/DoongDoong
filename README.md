@@ -38,10 +38,6 @@ npm run dev
 npm run check
 ```
 
-dev/prod는 별도 Supabase 프로젝트와 별도 프런트 URL을 사용한다. 로컬 환경 파일,
-GitHub Environment secret, 환경별 빌드 명령과 최초 구축 순서는
-[dev/prod 분리 배포 설계](docs/deployment-environments.md)에 정리되어 있다.
-
 ## 구조
 
 ```text
@@ -94,10 +90,8 @@ Azure 키는 정적 웹 번들에 넣지 않고 Supabase Edge Function secret으
 
 ## 배포
 
-`develop`에 push하면 격리된 dev 설정을 검증한 뒤 빌드 산출물만
-[`DoongDoong-dev`](https://github.com/sorryrlrud/DoongDoong-dev)의 Pages에 배포합니다.
-`main`에 push하면 `.github/workflows/deploy-pages.yml`이 production Environment로
-lint, test, build를 실행한 뒤 이 저장소의 운영 Pages에 배포합니다. 애플리케이션
-소스와 변경 이력은 이 저장소 하나에서 관리하며 dev 저장소는 정적 산출물만 보관합니다.
+이 서비스는 별도 개발 배포 없이 production 하나만 운영합니다. `main`에 push하면
+`.github/workflows/deploy-pages.yml`이 production Environment의 운영 Supabase 설정으로
+lint, test, build를 실행한 뒤 이 저장소의 GitHub Pages에 배포합니다.
 
 배포 후 지원 브라우저의 주소창 메뉴에서 **앱 설치**를 선택하면 독립 창으로 열 수 있습니다. 첫 방문 뒤에는 핵심 화면과 정적 자산이 캐시되어 네트워크가 잠시 끊겨도 다시 열 수 있습니다.

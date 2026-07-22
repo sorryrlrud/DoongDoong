@@ -13,10 +13,6 @@ import {
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-const deploymentEnvironment = import.meta.env.VITE_DEPLOYMENT_ENV ?? "development";
-const clientStorageKey = supabaseUrl
-  ? `doongdoong-${deploymentEnvironment}-${new URL(supabaseUrl).hostname}`
-  : undefined;
 const isAdminAuthRoute = typeof window !== "undefined" && readAppRoute() === "admin";
 const adminSessionStorage = (() => {
   if (typeof window === "undefined") return undefined;
@@ -31,14 +27,13 @@ const adminSessionStorage = (() => {
 const supabaseClient = supabaseUrl && supabasePublishableKey
   ? createBrowserSupabaseClient(supabaseUrl, supabasePublishableKey, {
     detectSessionInUrl: !isAdminAuthRoute,
-    storageKey: clientStorageKey,
   })
   : null;
 
 const adminSupabaseClient = supabaseUrl && supabasePublishableKey
   ? createBrowserSupabaseClient(supabaseUrl, supabasePublishableKey, {
     detectSessionInUrl: isAdminAuthRoute,
-    storageKey: `doongdoong-admin-${deploymentEnvironment}-${new URL(supabaseUrl).hostname}`,
+    storageKey: `doongdoong-admin-${new URL(supabaseUrl).hostname}`,
     storage: adminSessionStorage,
   })
   : null;
