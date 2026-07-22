@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
 
@@ -17,24 +17,32 @@ if (!databasePassword) {
   throw new Error("SUPABASE_DB_PASSWORD is required to read the linked migration ledger.");
 }
 
-let output;
-try {
-  output = execFileSync(
-    "supabase",
-    [
-      "migration",
-      "list",
-      "--linked",
-      "--password",
-      databasePassword,
-      "--output-format",
-      "json",
-    ],
-    { encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] },
+const migrationList = spawnSync(
+  "supabase",
+  [
+    "migration",
+    "list",
+    "--linked",
+    "--password",
+    databasePassword,
+    "--output-format",
+    "json",
+  ],
+  { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+);
+
+if (migrationList.status !== 0) {
+  const details = [migrationList.stdout, migrationList.stderr]
+    .filter(Boolean)
+    .join("\n")
+    .replaceAll(databasePassword, "[REDACTED]")
+    .trim();
+  throw new Error(
+    `Unable to read the linked migration ledger; refusing deployment.${details ? `\n${details}` : ""}`,
   );
-} catch {
-  throw new Error("Unable to read the linked migration ledger; refusing deployment.");
 }
+
+const output = migrationList.stdout;
 
 const payloadStart = output.indexOf("{");
 if (payloadStart < 0) {
