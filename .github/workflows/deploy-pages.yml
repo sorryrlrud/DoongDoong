@@ -55,6 +55,14 @@ jobs:
             exit 1
           fi
 
+          account_merge_status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+            --request OPTIONS "$base_url/functions/v1/account-merge" \
+            --header "Origin: $web_origin")"
+          if [ "$account_merge_status" != '200' ]; then
+            echo "Account-merge Edge endpoint is not ready (HTTP $account_merge_status)."
+            exit 1
+          fi
+
           contract_file="$(mktemp)"
           trap 'rm -f "$contract_file"' EXIT
           contract_status="$(curl --silent --show-error --output "$contract_file" --write-out '%{http_code}' \
