@@ -2,6 +2,11 @@ name: Audit production migration baseline
 
 on:
   workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type REPAIR_VERIFIED_BASELINE after reviewing the schema-only diff"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -49,3 +54,16 @@ jobs:
           path: ${{ runner.temp }}/production-baseline.diff.sql
           if-no-files-found: error
           retention-days: 1
+      - name: Record the verified historical migration baseline
+        if: inputs.confirm == 'REPAIR_VERIFIED_BASELINE'
+        run: >-
+          supabase migration repair --linked --status applied
+          --password "$SUPABASE_DB_PASSWORD"
+          202607140001 202607150001 202607160002 202607160003
+          202607160004 202607160005 202607160007 202607160008
+          202607160009 202607160010 202607160011 202607170001
+          202607170002 202607170003 202607170004 202607170005
+          202607170006 202607200001 202607200002
+      - name: Verify the repaired ledger
+        if: inputs.confirm == 'REPAIR_VERIFIED_BASELINE'
+        run: node scripts/verify-remote-migration-baseline.mjs
