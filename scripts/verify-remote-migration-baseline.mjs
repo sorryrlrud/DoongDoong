@@ -12,11 +12,24 @@ if (localVersions.length === 0) {
   throw new Error("No local migrations found.");
 }
 
+const databasePassword = process.env.SUPABASE_DB_PASSWORD;
+if (!databasePassword) {
+  throw new Error("SUPABASE_DB_PASSWORD is required to read the linked migration ledger.");
+}
+
 let output;
 try {
   output = execFileSync(
     "supabase",
-    ["migration", "list", "--linked", "--output-format", "json"],
+    [
+      "migration",
+      "list",
+      "--linked",
+      "--password",
+      databasePassword,
+      "--output-format",
+      "json",
+    ],
     { encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] },
   );
 } catch {
