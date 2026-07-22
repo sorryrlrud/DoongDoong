@@ -12,7 +12,7 @@ an existing production database.
   current backup. Record the restore timestamp and the successful smoke query
   in the deployment ticket.
 - The `production` GitHub Environment has secrets: `SUPABASE_ACCESS_TOKEN`,
-  `SUPABASE_PROJECT_REF`, `VITE_SUPABASE_URL`,
+  `SUPABASE_PROJECT_REF`, `SUPABASE_DB_PASSWORD`, `VITE_SUPABASE_URL`,
   `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_VAPID_PUBLIC_KEY`, and the private
   scheduler-only `SCHEDULED_JOB_SECRET`. It also has `VITE_PUBLIC_APP_URL` and
   `VITE_BASE_PATH` environment variables.
@@ -73,40 +73,42 @@ the historical `ocean_send_message` RPC until it refreshes.
 
 1. Run `npm run check`, `node scripts/check-migrations.mjs`, local Supabase
    replay, and the supplied database tests.
-2. From the exact reviewed release branch (before merging it to `main`),
-   manually dispatch **Deploy Supabase phase-one compatibility contract** with
-   `DEPLOY`, `BASELINE_VERIFIED`, and `COMPATIBILITY_RELEASE`. It deploys the
-   compatible Edge Functions first, then applies `202607210001`, then deploys
-   translation. The migration intentionally leaves an authenticated
-   compatibility facade for `ocean_send_message` enabled.
-3. Verify the linked migration list, call
+2. Merge the exact reviewed commit to `main`. The automatically triggered Pages
+   workflow must stop at its backend preflight while production still lacks the
+   new contract, leaving the previous Pages deployment live. Record that failed
+   preflight as evidence that the client cannot overtake the backend.
+3. From that exact `main` commit, manually dispatch **Deploy Supabase phase-one
+   compatibility contract** with `DEPLOY`, `BASELINE_VERIFIED`, and
+   `COMPATIBILITY_RELEASE`. It deploys the compatible Edge Functions first,
+   then applies `202607210001`, then deploys translation. The migration
+   intentionally leaves an authenticated compatibility facade for
+   `ocean_send_message` enabled.
+4. Verify the linked migration list, call
    `POST /rest/v1/rpc/ocean_pwa_contract_status` with the publishable key, and
    check that it returns `{"sendMessage":"edge-v1", ...}`. Smoke-test the
    new authenticated `/functions/v1/send-message` path and invoke the
    scheduled lifecycle/assignment job once with its internal secret.
-4. Merge or push that same reviewed commit to `main`. The Pages workflow probes
-   both `OPTIONS /functions/v1/send-message` and
-   `ocean_pwa_contract_status` before building; if either probe fails, the
-   prior Pages deployment remains live. Re-run the Pages workflow only after
-   the phase-one backend checks pass.
-5. Validate the public Pages URL in a fresh browser profile: service worker
+5. Re-run the Pages workflow for that same `main` commit. It probes both
+   `OPTIONS /functions/v1/send-message` and `ocean_pwa_contract_status` before
+   building; if either probe fails, the prior Pages deployment remains live.
+6. Validate the public Pages URL in a fresh browser profile: service worker
    scope, installability, authenticated Edge send, assigned arrival,
    notification preference, and account deletion. Also exercise a retained
    pre-release client artifact once: its direct RPC send must still return a
    snapshot and create a `drifting` message rather than an `available` row.
-6. Observe the compatibility window. The direct facade retains old-client
+7. Observe the compatibility window. The direct facade retains old-client
    availability but cannot use managed moderation, so it is deliberately
    time-limited. Keep the matching Edge-client Pages artifact live for at
    least 30 days, retain its deployment/cache evidence, and confirm aggregate
    telemetry shows no successful legacy RPC call for at least 14 days.
-7. Only then manually dispatch **Revoke legacy Ocean sender** with
+8. Only then manually dispatch **Revoke legacy Ocean sender** with
    `REVOKE_LEGACY_SEND` and `PAGES_AND_TELEMETRY_VERIFIED`. It runs
    `supabase/manual/202607220001_revoke_legacy_ocean_send_message.sql`, which
    invokes a transactionally gated private routine that independently enforces
    the 30-day Phase 1 and 14-day quiet-period checks before revoking the
    authenticated RPC grant. This SQL is intentionally outside
    `supabase/migrations`; normal deployment can never apply it.
-8. Repeat the new-client send smoke test after the revoke and record the
+9. Repeat the new-client send smoke test after the revoke and record the
    aggregate cutover row, Pages deployment URL, and workflow run URLs in the
    release ticket.
 
