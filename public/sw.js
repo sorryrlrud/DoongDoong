@@ -1,4 +1,9 @@
-const CACHE_NAME = "doongdoong-v16";
+// CacheStorage is shared by every service worker on the same origin. Including
+// the scope prevents a /dev/ deployment from deleting or serving /prod/ data.
+const CACHE_SCOPE = new URL(self.registration.scope).pathname.replace(/[^a-z0-9]+/gi, "-");
+const CACHE_PREFIX = `doongdoong-${CACHE_SCOPE}-`;
+const CACHE_NAME = `${CACHE_PREFIX}v16`;
+const LEGACY_CACHE_PATTERN = /^doongdoong-v\d+$/;
 const APP_SHELL = ["./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 const DEFAULT_ARRIVAL_URL = "./#/catch";
 
@@ -75,7 +80,14 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))))
+      .then((keys) => Promise.all(
+        keys
+          .filter((key) => (
+            (key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME)
+            || LEGACY_CACHE_PATTERN.test(key)
+          ))
+          .map((key) => caches.delete(key)),
+      ))
       .then(() => self.clients.claim()),
   );
 });
@@ -86,18 +98,22 @@ self.addEventListener("fetch", (event) => {
   if (event.request.mode === "navigate") {
     event.respondWith(
       fetch(event.request, { cache: "no-store" })
-        .catch(async () => (await caches.match("./index.html")) ?? caches.match("./")),
+        .catch(async () => {
+          const cache = await caches.open(CACHE_NAME);
+          return (await cache.match("./index.html")) ?? cache.match("./");
+        }),
     );
     return;
   }
 
   event.respondWith(
-    caches.match(event.request).then((cached) => {
+    caches.open(CACHE_NAME).then(async (cache) => {
+      const cached = await cache.match(event.request);
       const network = fetch(event.request)
         .then((response) => {
           if (response.ok) {
             const copy = response.clone();
-            void caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+            void cache.put(event.request, copy);
           }
           return response;
         })

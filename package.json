@@ -9,6 +9,10 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:dev": "node scripts/validate-deployment-env.mjs development && tsc -b && vite build --mode development",
+    "build:prod": "node scripts/validate-deployment-env.mjs production && tsc -b && vite build --mode production",
+    "env:check:dev": "node scripts/validate-deployment-env.mjs development",
+    "env:check:prod": "node scripts/validate-deployment-env.mjs production",
     "preview": "vite preview",
     "lint": "eslint .",
     "test": "vitest run",

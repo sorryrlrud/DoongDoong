@@ -33,4 +33,13 @@ describe("service worker Push contract", () => {
     expect(serviceWorker).toContain('self.addEventListener("notificationclick"');
     expect(serviceWorker).toContain('self.addEventListener("pushsubscriptionchange"');
   });
+
+  it("isolates app-shell caches by service worker scope", () => {
+    const serviceWorker = readFileSync("public/sw.js", "utf8");
+
+    expect(serviceWorker).toContain("self.registration.scope");
+    expect(serviceWorker).toContain("CACHE_PREFIX");
+    expect(serviceWorker).toContain("caches.open(CACHE_NAME)");
+    expect(serviceWorker).not.toContain("caches.match(event.request)");
+  });
 });

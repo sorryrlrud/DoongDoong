@@ -11,10 +11,11 @@ an existing production database.
 - A point-in-time restore has been exercised on a non-production project from a
   current backup. Record the restore timestamp and the successful smoke query
   in the deployment ticket.
-- GitHub repository secrets exist: `SUPABASE_ACCESS_TOKEN`,
+- The `production` GitHub Environment has secrets: `SUPABASE_ACCESS_TOKEN`,
   `SUPABASE_PROJECT_REF`, `VITE_SUPABASE_URL`,
   `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_VAPID_PUBLIC_KEY`, and the private
-  scheduler-only `SCHEDULED_JOB_SECRET`.
+  scheduler-only `SCHEDULED_JOB_SECRET`. It also has `VITE_PUBLIC_APP_URL` and
+  `VITE_BASE_PATH` environment variables.
 - Supabase Edge secrets exist: `MODERATION_ENDPOINT`, `MODERATION_API_KEY`,
   `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`,
   `SCHEDULED_JOB_SECRET`, and optionally `ALLOWED_WEB_ORIGINS`.
@@ -30,8 +31,8 @@ supabase secrets set --project-ref "$SUPABASE_PROJECT_REF" \
   VAPID_PUBLIC_KEY='...' VAPID_PRIVATE_KEY='...' \
   VAPID_SUBJECT='mailto:operations@example.com' \
   SCHEDULED_JOB_SECRET='...'
-gh secret set VITE_VAPID_PUBLIC_KEY --repo sorryrlrud/DoongDoong --body '...'
-gh secret set SCHEDULED_JOB_SECRET --repo sorryrlrud/DoongDoong --body '...'
+gh secret set VITE_VAPID_PUBLIC_KEY --env production --repo sorryrlrud/DoongDoong --body '...'
+gh secret set SCHEDULED_JOB_SECRET --env production --repo sorryrlrud/DoongDoong --body '...'
 ```
 
 Never place `VAPID_PRIVATE_KEY`, the moderation credential, a service-role key,
