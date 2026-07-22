@@ -37,6 +37,9 @@ interface SettingsScreenProps {
     autoIncludeDate: boolean;
   }) => Promise<void>;
   onLinkIdentity: (provider: SocialAuthProvider) => Promise<void>;
+  identityLinkConflict: SocialAuthProvider | null;
+  onStartAccountMerge: (provider: SocialAuthProvider) => Promise<void>;
+  onDismissIdentityLinkConflict: () => void;
   onSignOut: () => Promise<void>;
   notificationEnabled: boolean;
   onNotificationPreferenceChange: (enabled: boolean) => Promise<boolean>;
@@ -58,6 +61,9 @@ export function SettingsScreen({
   onDefaultSignatureChange,
   onAppPreferencesChange,
   onLinkIdentity,
+  identityLinkConflict,
+  onStartAccountMerge,
+  onDismissIdentityLinkConflict,
   onSignOut,
   notificationEnabled,
   onNotificationPreferenceChange,
@@ -66,7 +72,7 @@ export function SettingsScreen({
   onInstall,
   onDeleteAccount,
 }: SettingsScreenProps) {
-  const { t } = useI18n();
+  const { t, languageCode: uiLanguageCode } = useI18n();
   const [draftCountryCode, setDraftCountryCode] = useState(countryCode);
   const [draftLanguageCode, setDraftLanguageCode] = useState(languageCode);
   const [savedCountryCode, setSavedCountryCode] = useState(countryCode);
@@ -77,6 +83,7 @@ export function SettingsScreen({
   const [error, setError] = useState<MessageKey | null>(null);
   const [signingOut, setSigningOut] = useState(false);
   const [linkingProvider, setLinkingProvider] = useState<SocialAuthProvider | null>(null);
+  const [startingAccountMerge, setStartingAccountMerge] = useState(false);
   const [savingNotifications, setSavingNotifications] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [confirmingDeletion, setConfirmingDeletion] = useState(false);
@@ -169,6 +176,18 @@ export function SettingsScreen({
     }
   };
 
+  const startAccountMerge = async () => {
+    if (!identityLinkConflict || startingAccountMerge) return;
+    setStartingAccountMerge(true);
+    setError(null);
+    try {
+      await onStartAccountMerge(identityLinkConflict);
+    } catch {
+      setError("settings.socialError");
+      setStartingAccountMerge(false);
+    }
+  };
+
   const saveNotificationPreference = async (enabled: boolean) => {
     if (savingNotifications || (!pushSupported && enabled)) return;
     setSavingNotifications(true);
@@ -232,6 +251,42 @@ export function SettingsScreen({
 
       {error ? <div className="alert" role="alert">{t(error)}</div> : null}
       {notice ? <div className="alert" role="status">{t(notice)}</div> : null}
+
+      {identityLinkConflict === "naver" ? (
+        <section className="setting-section" aria-labelledby="account-merge-title">
+          <div>
+            <h2 id="account-merge-title">{uiLanguageCode === "ko" ? "네이버 계정 병합" : "Merge Naver account"}</h2>
+            <p>
+              {uiLanguageCode === "ko"
+                ? "이 네이버 계정은 이미 다른 둥둥 계정에 연결되어 있어요. 지금 로그인한 계정을 기준으로 병합하면, 다른 계정의 프로필과 설정은 삭제되고 보낸·받은·보관한 편지는 합쳐져요."
+                : "This Naver account is already connected to another DoongDoong account. Merging keeps the account you are signed in to, removes the other profile and settings, and combines sent, received, and kept letters."}
+            </p>
+            <p>{uiLanguageCode === "ko"
+              ? "방향을 바꾸려면 취소한 뒤, 유지할 다른 계정으로 로그인해 다시 시도해 주세요."
+              : "To merge in the other direction, cancel, sign in to the account you want to keep, and try again."}</p>
+          </div>
+          <div className="settings-dialog__actions">
+            <button
+              className="button button--ghost"
+              type="button"
+              disabled={startingAccountMerge}
+              onClick={onDismissIdentityLinkConflict}
+            >
+              {t("common.cancel")}
+            </button>
+            <button
+              className="button button--primary"
+              type="button"
+              disabled={startingAccountMerge}
+              onClick={() => void startAccountMerge()}
+            >
+              {startingAccountMerge
+                ? (uiLanguageCode === "ko" ? "네이버 확인 중…" : "Checking Naver…")
+                : t("common.continue")}
+            </button>
+          </div>
+        </section>
+      ) : null}
 
       <div className="settings-list">
         <section className="setting-section" aria-labelledby="setting-social-title">

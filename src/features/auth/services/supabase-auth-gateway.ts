@@ -1,10 +1,14 @@
 import type { Provider, SupabaseClient, User } from "@supabase/supabase-js";
 import type {
+  AccountMergePreview,
   AuthGateway,
   AuthUser,
   SocialAuthProvider,
 } from "@/features/auth/types/auth";
 import { clearSupabaseSession } from "@/features/ocean/services/supabase-client";
+
+const PENDING_IDENTITY_LINK_KEY = "doongdoong-pending-identity-link";
+const PENDING_ACCOUNT_MERGE_KEY = "doongdoong-pending-account-merge";
 
 const PROVIDERS: Record<SocialAuthProvider, Provider> = {
   google: "google",
@@ -38,6 +42,35 @@ const identityLinkRedirectUrl = (): string => {
   return redirectUrl.toString();
 };
 
+const browserSessionStorage = (): Storage | null => {
+  try {
+    return window.sessionStorage;
+  } catch {
+    return null;
+  }
+};
+
+const readStoredProvider = (key: string): SocialAuthProvider | null => {
+  const value = browserSessionStorage()?.getItem(key);
+  return value === "google" || value === "apple" || value === "naver" ? value : null;
+};
+
+const removeOAuthErrorFromUrl = () => {
+  const url = new URL(window.location.href);
+  ["error", "error_code", "error_description"].forEach((key) => url.searchParams.delete(key));
+  const fragment = new URLSearchParams(url.hash.replace(/^#/, ""));
+  const hasOAuthError = ["error", "error_code", "error_description"].some((key) => fragment.has(key));
+  if (hasOAuthError) url.hash = "/settings";
+  window.history.replaceState(window.history.state, "", url.toString());
+};
+
+const oauthErrorCode = (): string | null => {
+  const url = new URL(window.location.href);
+  const fromSearch = url.searchParams.get("error_code");
+  if (fromSearch) return fromSearch;
+  return new URLSearchParams(url.hash.replace(/^#/, "")).get("error_code");
+};
+
 export class SupabaseAuthGateway implements AuthGateway {
   constructor(private readonly client: SupabaseClient) {}
 
@@ -54,7 +87,12 @@ export class SupabaseAuthGateway implements AuthGateway {
       }
       throw error;
     }
-    return toAuthUser(data.user);
+    const authUser = toAuthUser(data.user);
+    const pendingProvider = readStoredProvider(PENDING_IDENTITY_LINK_KEY);
+    if (pendingProvider && authUser?.providers.includes(PROVIDERS[pendingProvider])) {
+      browserSessionStorage()?.removeItem(PENDING_IDENTITY_LINK_KEY);
+    }
+    return authUser;
   }
 
   onAuthStateChange(listener: (user: AuthUser | null) => void): () => void {
@@ -69,17 +107,69 @@ export class SupabaseAuthGateway implements AuthGateway {
   }
 
   async linkIdentity(provider: SocialAuthProvider): Promise<void> {
-    const { data, error } = await this.client.auth.linkIdentity({
-      provider: PROVIDERS[provider],
-      options: {
-        redirectTo: identityLinkRedirectUrl(),
-        skipBrowserRedirect: true,
-      },
-    });
+    browserSessionStorage()?.setItem(PENDING_IDENTITY_LINK_KEY, provider);
+    try {
+      const { data, error } = await this.client.auth.linkIdentity({
+        provider: PROVIDERS[provider],
+        options: {
+          redirectTo: identityLinkRedirectUrl(),
+          skipBrowserRedirect: true,
+        },
+      });
 
+      if (error) throw error;
+      if (!data.url) throw new Error("소셜 계정 연동 주소를 만들지 못했습니다.");
+      window.location.assign(data.url);
+    } catch (error) {
+      browserSessionStorage()?.removeItem(PENDING_IDENTITY_LINK_KEY);
+      throw error;
+    }
+  }
+
+  consumeIdentityLinkConflict(): SocialAuthProvider | null {
+    const provider = readStoredProvider(PENDING_IDENTITY_LINK_KEY);
+    const isConflict = oauthErrorCode() === "identity_already_exists";
+    if (!provider || !isConflict) return null;
+
+    browserSessionStorage()?.removeItem(PENDING_IDENTITY_LINK_KEY);
+    removeOAuthErrorFromUrl();
+    return provider;
+  }
+
+  async startAccountMerge(provider: SocialAuthProvider): Promise<void> {
+    const { data, error } = await this.client.functions.invoke("account-merge", {
+      body: { action: "start", provider },
+    });
     if (error) throw error;
-    if (!data.url) throw new Error("소셜 계정 연동 주소를 만들지 못했습니다.");
-    window.location.assign(data.url);
+    if (!data || typeof data.intentId !== "string") {
+      throw new Error("계정 병합을 시작하지 못했습니다.");
+    }
+
+    browserSessionStorage()?.setItem(PENDING_ACCOUNT_MERGE_KEY, data.intentId);
+    try {
+      await this.startOAuth(PROVIDERS[provider], identityLinkRedirectUrl());
+    } catch (caught) {
+      browserSessionStorage()?.removeItem(PENDING_ACCOUNT_MERGE_KEY);
+      throw caught;
+    }
+  }
+
+  hasPendingAccountMerge(): boolean {
+    return Boolean(browserSessionStorage()?.getItem(PENDING_ACCOUNT_MERGE_KEY));
+  }
+
+  async previewAccountMerge(): Promise<AccountMergePreview> {
+    return this.invokeAccountMerge<AccountMergePreview>("preview");
+  }
+
+  async completeAccountMerge(): Promise<void> {
+    await this.invokeAccountMerge<unknown>("complete");
+    browserSessionStorage()?.removeItem(PENDING_ACCOUNT_MERGE_KEY);
+  }
+
+  async cancelAccountMerge(): Promise<void> {
+    await this.invokeAccountMerge<unknown>("cancel");
+    browserSessionStorage()?.removeItem(PENDING_ACCOUNT_MERGE_KEY);
   }
 
   async signInAdmin(): Promise<void> {
@@ -100,6 +190,16 @@ export class SupabaseAuthGateway implements AuthGateway {
     if (error) throw error;
     if (!data.url) throw new Error("소셜 로그인 주소를 만들지 못했습니다.");
     window.location.assign(data.url);
+  }
+
+  private async invokeAccountMerge<T>(action: "preview" | "complete" | "cancel"): Promise<T> {
+    const intentId = browserSessionStorage()?.getItem(PENDING_ACCOUNT_MERGE_KEY);
+    if (!intentId) throw new Error("진행 중인 계정 병합이 없습니다.");
+    const { data, error } = await this.client.functions.invoke("account-merge", {
+      body: { action, intentId },
+    });
+    if (error) throw error;
+    return data as T;
   }
 
   async signOut(): Promise<void> {

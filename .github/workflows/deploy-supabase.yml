@@ -52,6 +52,7 @@ jobs:
       - name: Phase 1 — deploy compatible Edge endpoints before the database contract
         run: >-
           supabase functions deploy send-message delete-account dispatch-web-push
+          account-merge
           --project-ref "$SUPABASE_PROJECT_REF" --use-api
       - name: Phase 1 — apply the database contract while the legacy sender remains enabled
         run: supabase db push --include-all

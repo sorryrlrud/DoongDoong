@@ -11,6 +11,7 @@ import {
 } from "@/app/preferences";
 import { readAppRoute, useHashRoute } from "@/app/use-hash-route";
 import { LoginScreen } from "@/features/auth/components/login-screen";
+import { AccountMergeScreen } from "@/features/auth/components/account-merge-screen";
 import { HomeScreen } from "@/features/ocean/components/home-screen";
 import { AuthenticationRequiredError } from "@/features/ocean/services/errors";
 import type { OceanGateway, OceanSnapshot } from "@/features/ocean/types/ocean";
@@ -205,6 +206,7 @@ function AuthenticatedApp({
   const [busyProvider, setBusyProvider] = useState<SocialAuthProvider | null>(null);
   const [adminBusy, setAdminBusy] = useState(false);
   const [authFailed, setAuthFailed] = useState(hasOAuthError);
+  const [identityLinkConflict, setIdentityLinkConflict] = useState<SocialAuthProvider | null>(null);
 
   useEffect(() => {
     if (!activeAuthGateway) return;
@@ -233,6 +235,18 @@ function AuthenticatedApp({
       unsubscribe();
     };
   }, [activeAuthGateway]);
+
+  useEffect(() => {
+    if (!authGateway || !user || isAdminRoute) return;
+    const conflict = authGateway.consumeIdentityLinkConflict();
+    if (conflict) {
+      const timer = window.setTimeout(() => {
+        setIdentityLinkConflict(conflict);
+        setAuthFailed(false);
+      }, 0);
+      return () => window.clearTimeout(timer);
+    }
+  }, [authGateway, isAdminRoute, user]);
 
   // `?admin=1` is reserved for the OAuth callback because Supabase uses the
   // fragment for its response. Once that response has been consumed, keep the
@@ -269,6 +283,11 @@ function AuthenticatedApp({
   const linkIdentity = async (provider: SocialAuthProvider) => {
     if (!authGateway) return;
     await authGateway.linkIdentity(provider);
+  };
+  const startAccountMerge = async (provider: SocialAuthProvider) => {
+    if (!authGateway) return;
+    setIdentityLinkConflict(null);
+    await authGateway.startAccountMerge(provider);
   };
   const signInAdmin = async () => {
     if (!adminAuthGateway || adminBusy) return;
@@ -347,6 +366,20 @@ function AuthenticatedApp({
     );
   }
 
+  if (!isAdminRoute && authGateway?.hasPendingAccountMerge()) {
+    return (
+      <AccountMergeScreen
+        onPreview={() => authGateway.previewAccountMerge()}
+        onComplete={() => authGateway.completeAccountMerge()}
+        onCancel={async () => {
+          await authGateway.cancelAccountMerge();
+          await signOut();
+        }}
+        onResumeSignIn={(provider) => authGateway.signIn(provider)}
+      />
+    );
+  }
+
   return (
     <AppExperience
       key={user.id}
@@ -358,6 +391,9 @@ function AuthenticatedApp({
       showIosInstallHelp={showIosInstallHelp}
       onInstall={onInstall}
       onLinkIdentity={linkIdentity}
+      identityLinkConflict={identityLinkConflict}
+      onStartAccountMerge={startAccountMerge}
+      onDismissIdentityLinkConflict={() => setIdentityLinkConflict(null)}
       onSignOut={signOut}
       onAuthRequired={handleAuthRequired}
       oceanGateway={runtime.oceanGateway}
@@ -368,6 +404,9 @@ function AuthenticatedApp({
 interface AuthenticatedExperienceProps extends AppExperienceProps {
   user: AuthUser;
   onLinkIdentity: (provider: SocialAuthProvider) => Promise<void>;
+  identityLinkConflict: SocialAuthProvider | null;
+  onStartAccountMerge: (provider: SocialAuthProvider) => Promise<void>;
+  onDismissIdentityLinkConflict: () => void;
   onSignOut: () => Promise<void>;
   onAuthRequired: () => void;
   oceanGateway: OceanGateway;
@@ -382,6 +421,9 @@ function AppExperience({
   showIosInstallHelp,
   onInstall,
   onLinkIdentity,
+  identityLinkConflict,
+  onStartAccountMerge,
+  onDismissIdentityLinkConflict,
   onSignOut,
   onAuthRequired,
   oceanGateway,
@@ -668,6 +710,9 @@ function AppExperience({
           }
         }}
         onLinkIdentity={onLinkIdentity}
+        identityLinkConflict={identityLinkConflict}
+        onStartAccountMerge={onStartAccountMerge}
+        onDismissIdentityLinkConflict={onDismissIdentityLinkConflict}
         onSignOut={onSignOut}
         notificationEnabled={notificationEnabled}
         onNotificationPreferenceChange={changeBottleArrivalNotifications}

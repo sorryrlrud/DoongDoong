@@ -66,6 +66,9 @@ describe("sea experience", () => {
         onDefaultSignatureChange={() => undefined}
         onAppPreferencesChange={async () => undefined}
         onLinkIdentity={async () => undefined}
+        identityLinkConflict={null}
+        onStartAccountMerge={async () => undefined}
+        onDismissIdentityLinkConflict={() => undefined}
         onSignOut={async () => undefined}
         notificationEnabled={false}
         onNotificationPreferenceChange={async (enabled) => enabled}

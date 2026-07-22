@@ -81,6 +81,25 @@ const malformedDelete = await fetch(`${baseUrl}/functions/v1/delete-account`, {
 assert.equal(malformedDelete.status, 400, "delete-account must require explicit confirmation");
 assert.equal((await json(malformedDelete))?.error?.code, "CONFIRMATION_REQUIRED");
 
+const accountMergeCorsProbe = await fetch(`${baseUrl}/functions/v1/account-merge`, {
+  method: "OPTIONS",
+  headers: { Origin: "http://localhost:5173" },
+});
+assert.equal(accountMergeCorsProbe.status, 200, "account-merge must answer CORS preflight");
+assert.match(
+  accountMergeCorsProbe.headers.get("access-control-allow-methods") ?? "",
+  /POST/i,
+  "account-merge preflight must allow POST",
+);
+
+const malformedAccountMerge = await fetch(`${baseUrl}/functions/v1/account-merge`, {
+  method: "POST",
+  headers: userHeaders,
+  body: JSON.stringify({ action: "start", provider: "google" }),
+});
+assert.equal(malformedAccountMerge.status, 400, "account-merge must reject unsupported providers");
+assert.equal((await json(malformedAccountMerge))?.error?.code, "INVALID_REQUEST");
+
 const malformedTranslation = await fetch(`${baseUrl}/functions/v1/translate-message`, {
   method: "POST",
   headers: userHeaders,
